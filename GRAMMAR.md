@@ -116,7 +116,7 @@ left-leaning tree. The input is therefore read as
 
 ## EBNF
 
-(* ===================== 3. Top-Level Structure ===================== *)
+(* ===================== Top-Level Structure ===================== *)
 
 program              = statement , { statement } ;
 
@@ -124,7 +124,7 @@ statement             = relation-definition
                       | query-expression ;
 
 
-(* ===================== 4. Relation Definitions ===================== *)
+(* ===================== Relation Definitions ===================== *)
 
 relation-definition   = identifier , "(" , attribute-name-list , ")" ,
                         "=" , "{" , { tuple-row } , "}" ;
@@ -133,28 +133,32 @@ attribute-name-list   = identifier , { "," , identifier } ;
 
 tuple-row             = value , { "," , value } , newline ;
 
-(* ================ 5. Query Expressions  Stratified Grammar ================ *)
+(* ================ Query Expressions ================ *)
 
 query-expression      = additive-expr ;
 
 (* Level 1  union / intersect / minus  left-associative *)
+
 additive-expr         = multiplicative-expr , { additive-op , multiplicative-expr } ;
 
 additive-op           = "union" | "intersect" | "minus" ;
 
 (* Level 2  times / join  left-associative *)
+
 multiplicative-expr   = unary-expr , { multiplicative-op , unary-expr } ;
 
 multiplicative-op     = "times"
                       | "join" , "[" , condition , "]" ;
 
 (* Level 3  unary prefix operators *)
+
 unary-expr            = "select"  , "[" , condition          , "]" , "(" , query-expression , ")"
                       | "project" , "[" , attribute-name-list , "]" , "(" , query-expression , ")"
                       | "rename"  , "[" , identifier          , "]" , "(" , query-expression , ")"
                       | atom-expr ;
 
 (* Level 4  atoms *)
+
 atom-expr             = identifier
                       | "(" , query-expression , ")" ;
 

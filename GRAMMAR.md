@@ -12,8 +12,8 @@ Below is a table listing operator precedence from lowest to highest.
 |-------|------------------------------|---------|----------------|
 | 1     | `union`, `intersect`, `minus`| binary  | left           |
 | 2     | `times`, `join[c]`           | binary  | left           |
-| 3     | `select[c]`, `project[a]`, `rename[n]` | unary | —  |
-| 4     | relation name, `( expr )`    | atom    | —              |
+| 3     | `select[c]`, `project[a]`, `rename[n]` | unary | --   |
+| 4     | relation name, `( expr )`    | atom    |         --      |
 
 **Note:**
 - Higher level indicates higher precedence. Operators with higher precedence will bind more tightly to their operands than other operators
@@ -35,9 +35,7 @@ Expr ::= Expr "union" Expr
 ```
 Below are 2 parse trees for `A union B Minus C` given the above naive grammar
 
-TODO: ensure that this is the correct form for these parse trees
-
-**Tree 1** — `union` applied first: `A union B Minus C` or `(A union B) minus C`
+**Tree 1** `union` applied first: `A union B Minus C` or `(A union B) minus C`
 
 ```
         minus
@@ -47,7 +45,7 @@ TODO: ensure that this is the correct form for these parse trees
   A       B
 ```
 
-**Tree 2** — `minus` applied first: `A union (B minus C)`
+**Tree 2**  `minus` applied first: `A union (B minus C)`
 
 ```
       union
@@ -85,7 +83,7 @@ Result: `{ 1, 2, 3 }`
 
 The two trees produce different results, confirming the grammar is ambiguous.
 
-### 2.4 The Stratified Grammar That Removes the Ambiguity
+### The Stratified Grammar That Removes the Ambiguity
 
 The stratified grammar (see Section 5 for the full version) encodes precedence
 and left-associativity by splitting `Expr` into one non-terminal per
@@ -106,7 +104,7 @@ Atom        ::= IDENT | "(" Expr ")"
 
 **Which tree does it force?**
 
-`A union B minus C` is parsed as `(A union B) minus C` — **Tree 1**.
+`A union B minus C` is parsed as `(A union B) minus C`  **Tree 1**.
 
 Both `union` and `minus` live at the same precedence level (`AddExpr`).
 Because the rule is left-recursive (`AddExpr ::= AddExpr op MulExpr`), the
@@ -114,187 +112,145 @@ parser always reduces the leftmost sub-expression first, producing a
 left-leaning tree. The input is therefore read as
 `(A union B) minus C`, not `A union (B minus C)`.
 
-> **Left recursion note:** The stratified grammar above uses left recursion
-> (`AddExpr ::= AddExpr ...`, `MulExpr ::= MulExpr ...`). This is intentional
-> for expressing left-associativity, but it cannot be used directly in a
-> recursive-descent (top-down) parser without modification. See
-> [Section 10](#10-left-recursion-notes) for how this is resolved.
+---
+
+## EBNF
+
+(* ===================== 3. Top-Level Structure ===================== *)
+
+program              = statement , { statement } ;
+
+statement             = relation-definition
+                      | query-expression ;
+
+
+(* ===================== 4. Relation Definitions ===================== *)
+
+relation-definition   = identifier , "(" , attribute-name-list , ")" ,
+                        "=" , "{" , { tuple-row } , "}" ;
+
+attribute-name-list   = identifier , { "," , identifier } ;
+
+tuple-row             = value , { "," , value } , newline ;
+
+(* ================ 5. Query Expressions  Stratified Grammar ================ *)
+
+query-expression      = additive-expr ;
+
+(* Level 1  union / intersect / minus  left-associative *)
+additive-expr         = multiplicative-expr , { additive-op , multiplicative-expr } ;
+
+additive-op           = "union" | "intersect" | "minus" ;
+
+(* Level 2  times / join  left-associative *)
+multiplicative-expr   = unary-expr , { multiplicative-op , unary-expr } ;
+
+multiplicative-op     = "times"
+                      | "join" , "[" , condition , "]" ;
+
+(* Level 3  unary prefix operators *)
+unary-expr            = "select"  , "[" , condition          , "]" , "(" , query-expression , ")"
+                      | "project" , "[" , attribute-name-list , "]" , "(" , query-expression , ")"
+                      | "rename"  , "[" , identifier          , "]" , "(" , query-expression , ")"
+                      | atom-expr ;
+
+(* Level 4  atoms *)
+atom-expr             = identifier
+                      | "(" , query-expression , ")" ;
+
+
+(* ===================== 6. Conditions ===================== *)
+
+condition              = or-expr ;
+
+or-expr                = and-expr , { "or" , and-expr } ;
+
+and-expr               = not-expr , { "and" , not-expr } ;
+
+not-expr               = "not" , not-expr
+                       | "(" , condition , ")"
+                       | comparison ;
+
+comparison              = operand , comparison-op , operand ;
+
+comparison-op            = "=" | "!=" | "<" | "<=" | ">" | ">=" ;
+
+operand                  = qualified-attribute
+                         | number
+                         | string ;
+
+qualified-attribute      = identifier , [ "." , identifier ] ;
+
+
+(* ===================== 7. Values and Literals ===================== *)
+
+value                 = number | string | identifier ;
+
+number                = [ "-" ] , digit , { digit } , [ "." , digit , { digit } ] ;
+
+string                = bare-string | quoted-string ;
+
+bare-string           = ( ? any character except "," "(" ")" " " "'" and newline ? ) ,
+                        { ? any character except "," "(" ")" " " "'" and newline ? } ;
+
+quoted-string         = "'" ,
+                        { ( ? any character except "'" and newline ? ) | "''" } ,
+                        "'" ;
+
+
+(* ===================== 8. Identifiers and Base Rules ===================== *)
+
+identifier             = letter , { letter | digit | "_" } ;
+
+letter                 = ? any character "A"-"Z" or "a"-"z" ? ;
+
+digit                  = ? any character "0"-"9" ? ;
+
+newline                = ? newline character (U+000A) ? ;
 
 ---
 
-## 3. Top-Level Structure
+## Keyword-Spelled Attribute Names
+An attribute may be spelled the same as a keyword (test case 8, `select[union=3](R)`). The lexer classifies every keyword (`select`,
+`project`, `rename`, `union`, `intersect`, `minus`, `times`, `join`, `and`, `or`, `not`) by spelling alone, independent of where it appears
+in the input. This exception governs how the parser treats a keyword-typed token when it occurs where the grammar expects an
+attribute name: `qualified-attribute` and `attribute-name-list`. At those two positions, and only those two positions, the parser accepts a
+keyword token in place of an `identifier` token and uses its lexeme as the attribute name. Everywhere else in the grammar, a keyword-typed
+token is parsed as the keyword it represents.
 
-A program is a sequence of one or more statements separated by optional
-whitespace. Each statement is either a relation definition or a query
-expression.
+This exception does not extend to relation names. A relation name that matches a keyword spelling, whether in `relation-definition` or in
+`atom-expr`, is rejected as a syntax error rather than accepted as an identifier.
 
-```ebnf
-program            = statement , { statement } ;
+## Parsing strategy
+This project uses recursive descent.
 
-statement          = relation-definition
-                   | query-expression ;
-```
+Each precedence level is its own nonterminal, and every choice a parsing function has to make can be decided from a small, fixed number of tokens
+of lookahead, with no ambiguity between alternatives.
 
-A comment begins with `//` and extends to the end of the line. Comments may
-appear before a relation definition or stand alone; they are ignored by the
-parser.
+### Left Recursion
 
-```ebnf
-comment            = "//" , { any-char-except-newline } , newline ;
-```
-
----
-
-## 4. Relation Definitions
+Several rules in this grammar (`additive-expr`, `multiplicative-expr`, `or-expr`, and `and-expr`) would be left-recursive if written in their
+most natural form, e.g.:
 
 ```ebnf
-relation-definition = [ comment ] ,
-                      identifier , "(" , attribute-name-list , ")" ,
-                      "=" , "{" , { tuple-row } , "}" ;
-
-attribute-name-list = identifier , { "," , identifier } ;
-
-tuple-row           = value , { "," , value } ;
+additive-expr = additive-expr , additive-op , multiplicative-expr | multiplicative-expr ;
 ```
 
-Example:
+A recursive descent function implementing this directly would call itself before consuming any input, which never terminates.
 
-```
-// employees and their departments
-Employees (EID, Name, Age, DID) = {
-  E1, John, 32, D1
-  E2, Alice, 28, D2
-  E3, Bob, 29, D1
-}
-```
-
-Each value in a `tuple-row` is an unquoted identifier (for string-like data),
-a number, or a quoted string. Rows are separated by newlines; no trailing
-comma is required after the last value on a row.
-
----
-
-## 5. Query Expressions — Stratified Grammar
-
-This grammar encodes the precedence table from Section 1. Each level is a
-separate non-terminal.
+To avoid this, each of these four rules is instead written using EBNF's `{ }` repetition operator, which expresses "zero or more repetitions"
+directly, without the rule referencing itself:
 
 ```ebnf
-query-expression    = additive-expr ;
-
-(* Level 1 — union / intersect / minus — left-associative *)
-additive-expr       = additive-expr , additive-op , multiplicative-expr
-                    | multiplicative-expr ;
-
-additive-op         = "union" | "intersect" | "minus" ;
-
-(* Level 2 — times / join — left-associative *)
-multiplicative-expr = multiplicative-expr , multiplicative-op , unary-expr
-                    | unary-expr ;
-
-multiplicative-op   = "times"
-                    | "join" , "[" , condition , "]" ;
-
-(* Level 3 — unary prefix operators *)
-unary-expr          = "select"  , "[" , condition          , "]" , "(" , query-expression , ")"
-                    | "project" , "[" , attribute-name-list , "]" , "(" , query-expression , ")"
-                    | "rename"  , "[" , identifier          , "]" , "(" , query-expression , ")"
-                    | atom-expr ;
-
-(* Level 4 — atoms *)
-atom-expr           = identifier
-                    | "(" , query-expression , ")" ;
+additive-expr       = multiplicative-expr , { additive-op , multiplicative-expr } ;
+multiplicative-expr = unary-expr , { multiplicative-op , unary-expr } ;
+or-expr              = and-expr , { "or" , and-expr } ;
+and-expr              = not-expr , { "and" , not-expr } ;
 ```
 
-> **Left recursion note:** `additive-expr` and `multiplicative-expr` are
-> left-recursive. See [Section 10](#10-left-recursion-notes).
+By rewriting the rules to not reference themselves, I have removed the left recursion problem from the grammar.
 
----
-
-## 6. Conditions
-
-Used inside `select[...]`, `join[...]`, and parenthesised sub-conditions.
-Precedence: `not` (highest) > `and` > `or` (lowest).
-
-```ebnf
-condition           = or-expr ;
-
-or-expr             = or-expr , "or" , and-expr
-                    | and-expr ;
-
-and-expr            = and-expr , "and" , not-expr
-                    | not-expr ;
-
-not-expr            = "not" , not-expr
-                    | "(" , condition , ")"
-                    | comparison ;
-
-comparison          = operand , comparison-op , operand ;
-
-comparison-op       = "=" | "!=" | "<" | "<=" | ">" | ">=" ;
-
-operand             = qualified-attribute
-                    | number
-                    | string ;
-
-qualified-attribute = identifier , [ "." , identifier ] ;
-```
-
-A `qualified-attribute` with no dot is a plain attribute name (e.g. `Age`).
-With a dot it is `relation-name.attribute-name` (e.g. `Emp.DID`).
-
-> **Left recursion note:** `or-expr` and `and-expr` are left-recursive.
-> See [Section 10](#10-left-recursion-notes).
-
----
-
-## 7. Values and Literals
-
-```ebnf
-value               = number | string | identifier ;
-
-number              = [ "-" ] , digit , { digit } , [ "." , digit , { digit } ] ;
-
-string              = '"' , { string-char } , '"' ;
-
-string-char         = any-char-except-double-quote-or-newline
-                    | '\"' ;
-```
-
----
-
-## 8. Identifiers and Base Rules
-
-```ebnf
-identifier          = letter , { letter | digit | "_" } ;
-
-letter              = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I"
-                    | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R"
-                    | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
-                    | "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i"
-                    | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r"
-                    | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" ;
-
-digit               = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
-
-newline             = ? newline character (U+000A) ? ;
-
-any-char-except-newline
-                    = ? any Unicode character except U+000A ? ;
-
-any-char-except-double-quote-or-newline
-                    = ? any Unicode character except U+0022 and U+000A ? ;
-```
-
-Identifiers are case-sensitive. `EID` and `eid` are distinct.
-
-Reserved words that may not be used as relation or attribute names:
-`select`, `project`, `rename`, `union`, `intersect`, `minus`, `times`,
-`join`, `and`, `or`, `not`.
-
----
-
-## 9. Semantic Constraints
+## Semantic Constraints
 
 These rules cannot be expressed in a context-free grammar and are enforced
 during evaluation.
@@ -305,7 +261,7 @@ during evaluation.
 | `project[a₁,…,aₙ]` | Attributes `a₁…aₙ` in that order. All listed attributes must exist in the input schema. Duplicate tuples are removed from the result. |
 | `rename[N]` | Same attributes under the new relation name `N`. Required to make self-joins expressible. |
 | `times` | All attributes of both inputs, each qualified by their source relation name. If two qualified names would collide, that is an error. |
-| `join[c]` | Equivalent to `select[c](L times R)`. Theta join — not a natural join. No implicit attribute matching occurs. |
+| `join[c]` | Equivalent to `select[c](L times R)`. Theta join  not a natural join. No implicit attribute matching occurs. |
 | `union` | Schema of the left input. Both inputs must be union-compatible. |
 | `intersect` | Schema of the left input. Both inputs must be union-compatible. |
 | `minus` | Schema of the left input. Both inputs must be union-compatible. |
@@ -316,27 +272,6 @@ Anything else is an error.
 
 **Type error rule:** Comparing a number to a string in a condition is an
 error, not a silent false.
-
----
-
-## 10. Left Recursion Notes
-
-Several rules in this grammar are intentionally left-recursive to express
-left-associativity cleanly. Left recursion cannot be used directly in a
-recursive-descent (top-down) parser; it must be eliminated or handled by an
-iterative loop.
-
-The affected rules are:
-
-| Rule | Why left-recursive |
-|---|---|
-| `additive-expr` | `additive-expr ::= additive-expr op multiplicative-expr` |
-| `multiplicative-expr` | `multiplicative-expr ::= multiplicative-expr op unary-expr` |
-| `or-expr` | `or-expr ::= or-expr "or" and-expr` |
-| `and-expr` | `and-expr ::= and-expr "and" not-expr` |
-
-**Resolution to be determined.** *(This section will be updated once the
-resolution approach has been decided.)*
 
 ---
 

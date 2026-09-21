@@ -35,10 +35,10 @@
  */
 static inline size_t align_up(size_t alignment, size_t value)
 {
-	size_t r = alignment - (value % alignment); 
+	size_t r = value % alignment;
 	if (r != 0)
 	{
-		value += r;
+		value += alignment - r;
 	}
 
 	return value;
@@ -86,6 +86,61 @@ typedef struct
 	size_t alignment;
 } Arena;
 
+typedef struct
+{
+	int row;
+	int col;
+} FilePosition;
+
+typedef enum
+{
+	/* Punctuation */
+	LPAREN,             /* (  */
+	RPAREN,             /* )  */
+	LBRACKET,           /* [  */
+	RBRACKET,           /* ]  */
+	LBRACE,             /* {  */
+	RBRACE,             /* }  */
+	COMMA,              /* ,  */
+
+	/* Comparison operators */
+	EQUAL,              /* =  */
+	NOT_EQUAL,          /* != */
+	LESS_THAN,          /* <  */
+	LESS_THAN_OR_EQUAL, /* <= */
+	GREATER_THAN,       /* >  */
+	GREATER_THAN_OR_EQUAL, /* >= */
+
+	/* Literals and names */
+	NUMBER,
+	STRING,
+	IDENT,
+
+	/* Keywords */
+	SELECT,
+	PROJECT,
+	RENAME,
+	UNION,
+	INTERSECT,
+	MINUS,
+	TIMES,
+	JOIN,
+	AND,
+	OR,
+	NOT,
+
+	/* Control */
+	NEWLINE,
+} Category;
+
+typedef struct
+{
+	Category        category;
+	const char     *lexeme_start;
+	size_t          lexeme_length;
+	FilePosition    pos;
+} Token;
+
 /* ==================================================
  * ARENA
  * ================================================== */
@@ -130,7 +185,19 @@ static inline Arena arena_create(size_t initial_capacity)
  */
 static inline void *arena_alloc(Arena *arena, size_t size, size_t alignment)
 {
-	if (arena->used + size > arena->capacity)
+	if (arena->base == NULL)
+	{
+		arena->base = malloc(arena->capacity);
+		if (arena->base == NULL)
+		{
+			LOG_ERR("Arena initial allocation failed!");
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	size_t aligned_used = align_up(alignment, arena->used);
+
+	if (aligned_used + size > arena->capacity)
 	{
 		arena->capacity *= 2;
 		arena->base = realloc(arena->base, arena->capacity);
@@ -142,8 +209,9 @@ static inline void *arena_alloc(Arena *arena, size_t size, size_t alignment)
 		}
 	}
 
-	arena->used += size;
-	arena->used = align_up(alignment, arena->used);
-	void *ptr = arena->base + arena->used;
+	void *ptr = arena->base + aligned_used;
+	arena->used = aligned_used + size;
 	return ptr;
 }
+
+#define token_new(arena) ((Token *)arena_alloc((arena), sizeof(Token), _Alignof(Token)))

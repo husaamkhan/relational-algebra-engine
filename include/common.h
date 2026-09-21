@@ -160,10 +160,10 @@ typedef struct
 static inline Arena arena_create(size_t initial_capacity)
 {
 	return (Arena) {
-		.base 		= NULL,
-		.used 		= 0,
-		.capacity 	= initial_capacity,
-		.alignment 	= 1
+		.base      = NULL,
+		.used      = 0,
+		.capacity  = initial_capacity,
+		.alignment = 1 // TODO: not being used anywhere. maybe remove until needed?
 	};
 }
 
@@ -187,6 +187,9 @@ static inline void *arena_alloc(Arena *arena, size_t size, size_t alignment)
 {
 	if (arena->base == NULL)
 	{
+		// TODO: maybe lets use os_reserve or mmap to reserve a large chunk
+		// of memory so that we don't need to realloc later, as that is expensive
+		// reserving a large chunk of virtual memory that the arena can expand into if needed with os_reserve will be better for performance
 		arena->base = malloc(arena->capacity);
 		if (arena->base == NULL)
 		{
@@ -200,6 +203,7 @@ static inline void *arena_alloc(Arena *arena, size_t size, size_t alignment)
 	if (aligned_used + size > arena->capacity)
 	{
 		arena->capacity *= 2;
+		// TODO: see the note on os_reserve and mmap above
 		arena->base = realloc(arena->base, arena->capacity);
 
 		if (arena->base == NULL)

@@ -14,7 +14,7 @@ typedef struct
 
 	char cur_char;
 	int cur_pos;
-	int last_accepting_pos;
+	int last_accepting_pos; // TODO: is this still going to be used?
 
 	int lexeme_start;
 	bool has_error;

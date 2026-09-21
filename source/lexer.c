@@ -1,5 +1,19 @@
 #include "lexer.h"
 
+/*
+ * Initializes a lexer with the given input buffer.
+ *
+ * Input:
+ *   lexer         - Lexer to initialize.
+ *   file_contents - Pointer to the input buffer.
+ *   file_size     - Size of the input buffer in bytes.
+ *
+ * Output:
+ *   The lexer's internal state is initialized.
+ *
+ * Returns:
+ *   None.
+ */
 void lexer_init(Lexer *lexer, const char *file_contents, size_t file_size)
 {
 	lexer->file_contents      = file_contents;
@@ -11,6 +25,19 @@ void lexer_init(Lexer *lexer, const char *file_contents, size_t file_size)
 	lexer->pos.col            = 1;
 }
 
+/*
+ * Peeks at the next character without consuming it.
+ *
+ * Input:
+ *   lexer - Lexer to peek from.
+ *   c     - Output pointer to store the peeked character.
+ *
+ * Output:
+ *   *c is set to the next character if available.
+ *
+ * Returns:
+ *   true if a character was peeked, false if at EOF.
+ */
 bool peek(const Lexer *lexer, char *c)
 {
 	if (lexer->cur_pos >= (int)lexer->file_size)
@@ -22,6 +49,20 @@ bool peek(const Lexer *lexer, char *c)
 	return true;
 }
 
+/*
+ * Advances the lexer by one character, updating position tracking.
+ *
+ * Input:
+ *   lexer - Lexer to advance.
+ *
+ * Output:
+ *   lexer->cur_char is set to the consumed character.
+ *   lexer->cur_pos is incremented.
+ *   lexer->pos.row/col are updated for newlines.
+ *
+ * Returns:
+ *   true if a character was consumed, false if at EOF.
+ */
 bool advance(Lexer *lexer)
 {
 	char next_char;
@@ -45,6 +86,21 @@ bool advance(Lexer *lexer)
 	return true;
 }
 
+/*
+ * Tokenizes the input buffer into a sequence of tokens.
+ *
+ * Input:
+ *   lexer     - Initialized lexer with input buffer.
+ *   arena     - Arena to allocate tokens from.
+ *   count_out - Pointer to store the number of tokens produced.
+ *
+ * Output:
+ *   Tokens are allocated in the arena. count_out is set to the token count.
+ *   lexer->has_error is set to true if any lexical errors occurred.
+ *
+ * Returns:
+ *   None.
+ */
 void lex(Lexer *lexer, Arena *arena, size_t *count_out)
 {
 	*count_out = 0;

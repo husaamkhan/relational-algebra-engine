@@ -183,6 +183,12 @@ static inline Arena arena_create(size_t initial_capacity)
 	};
 }
 
+/*
+ * Releases the arena's memory back to the OS.
+ *
+ * Input:
+ *   arena - Arena to destroy.
+ */
 static inline void arena_destroy(Arena *arena)
 {
 	if (arena->base == NULL)
@@ -242,6 +248,18 @@ static inline void *arena_push(Arena *arena, size_t size, size_t alignment)
 }
 
 
+/*
+ * Reverts the last arena allocation by resetting the used pointer to its previous location.
+ *
+ * Input:
+ *   arena - Arena to pop from.
+ *
+ * Output:
+ *   arena->used is reset to the value before the last arena_push.
+ *
+ * Returns:
+ *   None.
+ */
 static inline void arena_pop(Arena *arena)
 {
 	// used instead of something like arena->used -= size of type as arena_push

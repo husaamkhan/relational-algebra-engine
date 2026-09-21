@@ -1,3 +1,4 @@
+#include <string.h>
 #include "lexer.h"
 
 /*
@@ -190,11 +191,46 @@ void lex(Lexer *lexer, Arena *arena, size_t *count_out)
 			}
 			default:
 		{
-			arena_pop(arena);
-			lexer->has_error = true;
+			if ((lexer->cur_char >= 'a' && lexer->cur_char <= 'z') ||
+			    (lexer->cur_char >= 'A' && lexer->cur_char <= 'Z'))
+			{
+				/* Consume the rest of the identifier: letters, digits, underscores. */
+				char next_char;
+				while (peek(lexer, &next_char) &&
+				       ((next_char >= 'a' && next_char <= 'z') ||
+				        (next_char >= 'A' && next_char <= 'Z') ||
+				        (next_char >= '0' && next_char <= '9') ||
+				        next_char == '_'))
+				{
+					advance(lexer);
+				}
 
-			LEX_ERR("Unexpected character '%c' at %d:%d", lexer->cur_char, token->pos.row, token->pos.col);
-			continue;
+				token->lexeme_length = lexer->cur_pos - lexer->lexeme_start;
+
+				/* Classify: check if the lexeme exactly matches a keyword. */
+				const char *lex = token->lexeme_start;
+				size_t      len = token->lexeme_length;
+
+				if      (len == 6 && strncmp(lex, "select",    6) == 0) token->category = SELECT;
+				else if (len == 7 && strncmp(lex, "project",   7) == 0) token->category = PROJECT;
+				else if (len == 6 && strncmp(lex, "rename",    6) == 0) token->category = RENAME;
+				else if (len == 5 && strncmp(lex, "union",     5) == 0) token->category = UNION;
+				else if (len == 9 && strncmp(lex, "intersect", 9) == 0) token->category = INTERSECT;
+				else if (len == 5 && strncmp(lex, "minus",     5) == 0) token->category = MINUS;
+				else if (len == 5 && strncmp(lex, "times",     5) == 0) token->category = TIMES;
+				else if (len == 4 && strncmp(lex, "join",      4) == 0) token->category = JOIN;
+				else if (len == 3 && strncmp(lex, "and",       3) == 0) token->category = AND;
+				else if (len == 2 && strncmp(lex, "or",        2) == 0) token->category = OR;
+				else if (len == 3 && strncmp(lex, "not",       3) == 0) token->category = NOT;
+				else                                                      token->category = IDENT;
+			}
+			else
+			{
+				arena_pop(arena);
+				lexer->has_error = true;
+				LEX_ERR("Unexpected character '%c' at %d:%d", lexer->cur_char, token->pos.row, token->pos.col);
+				continue;
+			}
 		}
 		}
 

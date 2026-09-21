@@ -36,5 +36,6 @@
         -   Preventing possible issues with peek by changing it to not consume characters
         -   Created a separate function advance() that advances the lexer forward
         -   Fixed possibly buggy handling for !=, <=, and >=
-    -   Moving forward
-        -   
+    -   Moving forward with lexer
+        -   Added identifier and keyword recognition
+

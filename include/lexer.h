@@ -6,13 +6,26 @@
 
 #define LEX_ERR(fmt, ...) LOG_ERR("[LEXICAL] " fmt, ##__VA_ARGS__)
 
+typedef struct
+{
+	const char *file_contents;
+	size_t file_size;
+	FilePosition pos;
+
+	char cur_char;
+	int cur_pos;
+
+	int lexeme_start;
+	bool has_error;
+} Lexer;
+
 /*
  * Initializes a lexer with the given input buffer.
  *
  * Input:
- *   lexer		- Lexer to initialize.
- *   file_contents 	- Pointer to the input buffer.
- *   file_size     	- Size of the input buffer in bytes.
+ *   lexer         - Lexer to initialize.
+ *   file_contents - Pointer to the input buffer.
+ *   file_size     - Size of the input buffer in bytes.
  *
  * Output:
  *   The lexer's internal state is initialized.
@@ -37,20 +50,4 @@ void lexer_init(Lexer *lexer, const char *file_contents, size_t file_size);
  * Returns:
  *   None.
  */
-void lex(Lexer *lexer, Arena *arena, size_t *count_out);
-
-typedef struct
-{
-	const char *file_contents;
-	size_t file_size;
-	FilePosition pos;
-
-	char cur_char;
-	int cur_pos;
-
-	int lexeme_start;
-	bool has_error;
-} Lexer;
-
-void lexer_init(Lexer *lexer, const char *file_contents, size_t file_size);
 void lex(Lexer *lexer, Arena *arena, size_t *count_out);

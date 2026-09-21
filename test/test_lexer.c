@@ -38,6 +38,7 @@ typedef struct
     Category category;
     const char *lexeme;
     size_t lexeme_length;
+    FilePosition pos;
 } ExpectedToken;
 
 static void print_tokens(Token *tokens, size_t count)
@@ -72,6 +73,8 @@ static void run_test(const char *src, size_t input_length, size_t expected_token
 		TEST_ASSERT_EQUAL_INT(expected_tokens[i].category, tokens[i].category);
 		TEST_ASSERT_EQUAL_size_t(expected_tokens[i].lexeme_length, tokens[i].lexeme_length);
 		TEST_ASSERT_EQUAL_INT(0, strncmp(expected_tokens[i].lexeme, tokens[i].lexeme_start, expected_tokens[i].lexeme_length));
+		TEST_ASSERT_EQUAL_INT(expected_tokens[i].pos.row, tokens[i].pos.row);
+		TEST_ASSERT_EQUAL_INT(expected_tokens[i].pos.col, tokens[i].pos.col);
 	}
 }
 
@@ -91,7 +94,8 @@ void test_lparen(void) {
 			{
 				.category = LPAREN,
 				.lexeme = "(",
-				.lexeme_length = 1
+				.lexeme_length = 1,
+				.pos = { .row = 1, .col = 1 }
 			}
 		});
 }
@@ -106,7 +110,8 @@ void test_rparen(void)
 			{
 				.category = RPAREN,
 				.lexeme = ")",
-				.lexeme_length = 1
+				.lexeme_length = 1,
+				.pos = { .row = 1, .col = 1 }
 			}
 		});
 }
@@ -121,7 +126,8 @@ void test_lbracket(void)
 			{
 				.category = LBRACKET,
 				.lexeme = "[",
-				.lexeme_length = 1
+				.lexeme_length = 1,
+				.pos = { .row = 1, .col = 1 }
 			}
 		});
 }
@@ -135,7 +141,8 @@ void test_rbracket(void)
 			{
 				.category = RBRACKET,
 				.lexeme = "]",
-				.lexeme_length = 1
+				.lexeme_length = 1,
+				.pos = { .row = 1, .col = 1 }
 			}
 		});
 }
@@ -150,7 +157,8 @@ void test_lbrace(void)
 			{
 				.category = LBRACE,
 				.lexeme = "{",
-				.lexeme_length = 1
+				.lexeme_length = 1,
+				.pos = { .row = 1, .col = 1 }
 			}
 		});
 }
@@ -165,7 +173,8 @@ void test_rbrace(void)
 			{
 				.category = RBRACE,
 				.lexeme = "}",
-				.lexeme_length = 1
+				.lexeme_length = 1,
+				.pos = { .row = 1, .col = 1 }
 			}
 		});
 }
@@ -180,7 +189,8 @@ void test_comma(void)
 			{
 				.category = COMMA,
 				.lexeme = ",",
-				.lexeme_length = 1
+				.lexeme_length = 1,
+				.pos = { .row = 1, .col = 1 }
 			}
 		});
 }
@@ -195,7 +205,8 @@ void test_equal(void)
 			{
 				.category = EQUAL,
 				.lexeme = "=",
-				.lexeme_length = 1
+				.lexeme_length = 1,
+				.pos = { .row = 1, .col = 1 }
 			}
 		});
 }
@@ -210,7 +221,8 @@ void test_not_equal(void)
 			{
 				.category = NOT_EQUAL,
 				.lexeme = "!=",
-				.lexeme_length = 2
+				.lexeme_length = 2,
+				.pos = { .row = 1, .col = 1 }
 			}
 		});
 }
@@ -226,7 +238,8 @@ void test_less_than(void)
 			{
 				.category = LESS_THAN,
 				.lexeme = "<",
-				.lexeme_length = 1
+				.lexeme_length = 1,
+				.pos = { .row = 1, .col = 1 }
 			}
 		});
 }
@@ -241,7 +254,8 @@ void test_less_than_or_equal(void)
 			{
 				.category = LESS_THAN_OR_EQUAL,
 				.lexeme = "<=",
-				.lexeme_length = 2
+				.lexeme_length = 2,
+				.pos = { .row = 1, .col = 1 }
 			}
 		});
 }
@@ -256,7 +270,8 @@ void test_greater_than(void)
 			{
 				.category = GREATER_THAN,
 				.lexeme = ">",
-				.lexeme_length = 1
+				.lexeme_length = 1,
+				.pos = { .row = 1, .col = 1 }
 			}
 		});
 }
@@ -271,8 +286,46 @@ void test_greater_than_or_equal(void)
 			{
 				.category = GREATER_THAN_OR_EQUAL,
 				.lexeme = ">=",
-				.lexeme_length = 2
+				.lexeme_length = 2,
+				.pos = { .row = 1, .col = 1 }
 			}
+		});
+}
+
+void test_spaces_are_ignored(void)
+{
+	run_test(
+		" ( ) ",
+		5,
+		2,
+		(ExpectedToken[]){
+			{ .category = LPAREN, .lexeme = "(", .lexeme_length = 1, .pos = { .row = 1, .col = 2 } },
+			{ .category = RPAREN, .lexeme = ")", .lexeme_length = 1, .pos = { .row = 1, .col = 4 } },
+		});
+}
+
+void test_newline_is_emitted_and_updates_position(void)
+{
+	run_test(
+		"\n(",
+		2,
+		2,
+		(ExpectedToken[]){
+			{ .category = NEWLINE, .lexeme = "\n", .lexeme_length = 1, .pos = { .row = 1, .col = 1 } },
+			{ .category = LPAREN,  .lexeme = "(",  .lexeme_length = 1, .pos = { .row = 2, .col = 1 } },
+		});
+}
+
+void test_two_character_comparison_operators_consume_equals(void)
+{
+	run_test(
+		"<= >= !=",
+		8,
+		3,
+		(ExpectedToken[]){
+			{ .category = LESS_THAN_OR_EQUAL,    .lexeme = "<=", .lexeme_length = 2, .pos = { .row = 1, .col = 1 } },
+			{ .category = GREATER_THAN_OR_EQUAL, .lexeme = ">=", .lexeme_length = 2, .pos = { .row = 1, .col = 4 } },
+			{ .category = NOT_EQUAL,             .lexeme = "!=", .lexeme_length = 2, .pos = { .row = 1, .col = 7 } },
 		});
 }
 
@@ -292,5 +345,8 @@ int main(void)
 	RUN_TEST(test_less_than_or_equal);
 	RUN_TEST(test_greater_than);
 	RUN_TEST(test_greater_than_or_equal);
+	RUN_TEST(test_spaces_are_ignored);
+	RUN_TEST(test_newline_is_emitted_and_updates_position);
+	RUN_TEST(test_two_character_comparison_operators_consume_equals);
 	return UNITY_END();
 }

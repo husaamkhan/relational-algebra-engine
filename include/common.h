@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/mman.h>
 
 /* ==================================================
  * LOGGING
@@ -83,7 +84,7 @@ typedef struct
 	char *base;
 	size_t used;
 	size_t capacity;
-	size_t alignment;
+	size_t prev_used; // used for arena_pop because arena_push aligns upwards
 } Arena;
 
 typedef struct
@@ -159,12 +160,47 @@ typedef struct
  */
 static inline Arena arena_create(size_t initial_capacity)
 {
+	// TODO: mmap is Linux/POSIX-specific and won't work on other platforms
+	char *base = mmap(
+		NULL,
+		initial_capacity,
+		PROT_READ | PROT_WRITE,
+		MAP_PRIVATE | MAP_ANONYMOUS,
+		-1,
+		0);
+
+	if (base == MAP_FAILED)
+	{
+		LOG_ERR("Arena reservation failed!");
+		exit(EXIT_FAILURE);
+	}
+
 	return (Arena) {
-		.base      = NULL,
+		.base      = base,
 		.used      = 0,
 		.capacity  = initial_capacity,
-		.alignment = 1 // TODO: not being used anywhere. maybe remove until needed?
+		.prev_used = 0
 	};
+}
+
+static inline void arena_destroy(Arena *arena)
+{
+	if (arena->base == NULL)
+	{
+		LOG_ERR("Attempted to destroy an uninitialized or already destroyed arena!");
+		return;
+	}
+
+	// TODO: munmap is Linux/POSIX-specific and won't work on other platforms
+	if (munmap(arena->base, arena->capacity) != 0)
+	{
+		LOG_ERR("Arena release failed!");
+	}
+
+	arena->base = NULL;
+	arena->used = 0;
+	arena->capacity = 0;
+	arena->prev_used = 0;
 }
 
 
@@ -178,44 +214,40 @@ static inline Arena arena_create(size_t initial_capacity)
  *
  * Output:
  *   The arena's used space is advanced by the allocation size.
- *   The arena may be resized if it does not have enough capacity.
+ *   The allocation fails if the arena does not have enough remaining capacity.
  *
  * Returns:
  *   A pointer to the allocated memory.
  */
-static inline void *arena_alloc(Arena *arena, size_t size, size_t alignment)
+static inline void *arena_push(Arena *arena, size_t size, size_t alignment)
 {
-	if (arena->base == NULL)
+	if (alignment == 0)
 	{
-		// TODO: maybe lets use os_reserve or mmap to reserve a large chunk
-		// of memory so that we don't need to realloc later, as that is expensive
-		// reserving a large chunk of virtual memory that the arena can expand into if needed with os_reserve will be better for performance
-		arena->base = malloc(arena->capacity);
-		if (arena->base == NULL)
-		{
-			LOG_ERR("Arena initial allocation failed!");
-			exit(EXIT_FAILURE);
-		}
+		LOG_ERR("Arena allocation alignment must be nonzero!");
+		exit(EXIT_FAILURE);
 	}
 
 	size_t aligned_used = align_up(alignment, arena->used);
 
-	if (aligned_used + size > arena->capacity)
+	if (aligned_used > arena->capacity || size > arena->capacity - aligned_used)
 	{
-		arena->capacity *= 2;
-		// TODO: see the note on os_reserve and mmap above
-		arena->base = realloc(arena->base, arena->capacity);
-
-		if (arena->base == NULL)
-		{
-			LOG_ERR("Arena realloc failed!");
-			exit(EXIT_FAILURE);
-		}
+		LOG_ERR("Arena capacity exceeded!");
+		exit(EXIT_FAILURE);
 	}
 
 	void *ptr = arena->base + aligned_used;
+	arena->prev_used = arena->used; // tracks previous used for arena_pop
 	arena->used = aligned_used + size;
 	return ptr;
 }
 
-#define token_new(arena) ((Token *)arena_alloc((arena), sizeof(Token), _Alignof(Token)))
+
+static inline void arena_pop(Arena *arena)
+{
+	// used instead of something like arena->used -= size of type as arena_push
+	// aligns upwards. just subtracting the size of the type would not get rid
+	// of any alignment padding from when the arena_push aligned upwards.
+	arena->used = arena->prev_used;
+}
+
+#define token_new(arena) ((Token *)arena_push((arena), sizeof(Token), _Alignof(Token)))

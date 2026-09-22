@@ -38,4 +38,5 @@
         -   Fixed possibly buggy handling for !=, <=, and >=
     -   Moving forward with lexer
         -   Added identifier and keyword recognition
-
+        -   Working on number recognition. Ran into a lot of issues here with incorrect EOF handling causing infinite loops.
+    -   Will be implementing strings tomorrow and will move on to the parser 

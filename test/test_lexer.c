@@ -54,7 +54,7 @@ static void print_tokens(Token *tokens, size_t count)
 	}
 }
 
-static void run_test(const char *src, size_t input_length, size_t expected_token_count, ExpectedToken *expected_tokens)
+static void run_test(const char *src, size_t input_length, size_t expected_token_count, ExpectedToken *expected_tokens, bool expect_error)
 {
 	Lexer lexer;
 	lexer_init(&lexer, src, input_length);
@@ -76,6 +76,8 @@ static void run_test(const char *src, size_t input_length, size_t expected_token
 		TEST_ASSERT_EQUAL_INT(expected_tokens[i].pos.row, tokens[i].pos.row);
 		TEST_ASSERT_EQUAL_INT(expected_tokens[i].pos.col, tokens[i].pos.col);
 	}
+
+	TEST_ASSERT(expect_error == lexer.has_error);
 }
 
 void setUp(void)
@@ -97,7 +99,8 @@ void test_lparen(void) {
 				.lexeme_length = 1,
 				.pos = { .row = 1, .col = 1 }
 			}
-		});
+		},
+		false);
 }
 
 void test_rparen(void)
@@ -113,7 +116,8 @@ void test_rparen(void)
 				.lexeme_length = 1,
 				.pos = { .row = 1, .col = 1 }
 			}
-		});
+		},
+		false);
 }
 
 void test_lbracket(void)
@@ -129,7 +133,8 @@ void test_lbracket(void)
 				.lexeme_length = 1,
 				.pos = { .row = 1, .col = 1 }
 			}
-		});
+		},
+		false);
 }
 void test_rbracket(void)
 {
@@ -144,7 +149,8 @@ void test_rbracket(void)
 				.lexeme_length = 1,
 				.pos = { .row = 1, .col = 1 }
 			}
-		});
+		},
+		false);
 }
 
 void test_lbrace(void)
@@ -160,7 +166,8 @@ void test_lbrace(void)
 				.lexeme_length = 1,
 				.pos = { .row = 1, .col = 1 }
 			}
-		});
+		},
+		false);
 }
 
 void test_rbrace(void)
@@ -176,7 +183,8 @@ void test_rbrace(void)
 				.lexeme_length = 1,
 				.pos = { .row = 1, .col = 1 }
 			}
-		});
+		},
+		false);
 }
 
 void test_comma(void)
@@ -192,7 +200,8 @@ void test_comma(void)
 				.lexeme_length = 1,
 				.pos = { .row = 1, .col = 1 }
 			}
-		});
+		},
+		false);
 }
 
 void test_equal(void)
@@ -208,7 +217,8 @@ void test_equal(void)
 				.lexeme_length = 1,
 				.pos = { .row = 1, .col = 1 }
 			}
-		});
+		},
+		false);
 }
 
 void test_not_equal(void)
@@ -224,7 +234,8 @@ void test_not_equal(void)
 				.lexeme_length = 2,
 				.pos = { .row = 1, .col = 1 }
 			}
-		});
+		},
+		false);
 }
 
 
@@ -241,7 +252,8 @@ void test_less_than(void)
 				.lexeme_length = 1,
 				.pos = { .row = 1, .col = 1 }
 			}
-		});
+		},
+		false);
 }
 
 void test_less_than_or_equal(void)
@@ -257,7 +269,8 @@ void test_less_than_or_equal(void)
 				.lexeme_length = 2,
 				.pos = { .row = 1, .col = 1 }
 			}
-		});
+		},
+		false);
 }
 
 void test_greater_than(void)
@@ -273,7 +286,8 @@ void test_greater_than(void)
 				.lexeme_length = 1,
 				.pos = { .row = 1, .col = 1 }
 			}
-		});
+		},
+		false);
 }
 
 void test_greater_than_or_equal(void)
@@ -289,7 +303,8 @@ void test_greater_than_or_equal(void)
 				.lexeme_length = 2,
 				.pos = { .row = 1, .col = 1 }
 			}
-		});
+		},
+		false);
 }
 
 void test_spaces_are_ignored(void)
@@ -301,7 +316,8 @@ void test_spaces_are_ignored(void)
 		(ExpectedToken[]){
 			{ .category = LPAREN, .lexeme = "(", .lexeme_length = 1, .pos = { .row = 1, .col = 2 } },
 			{ .category = RPAREN, .lexeme = ")", .lexeme_length = 1, .pos = { .row = 1, .col = 4 } },
-		});
+		},
+		false);
 }
 
 void test_newline_is_emitted_and_updates_position(void)
@@ -313,7 +329,8 @@ void test_newline_is_emitted_and_updates_position(void)
 		(ExpectedToken[]){
 			{ .category = NEWLINE, .lexeme = "\n", .lexeme_length = 1, .pos = { .row = 1, .col = 1 } },
 			{ .category = LPAREN,  .lexeme = "(",  .lexeme_length = 1, .pos = { .row = 2, .col = 1 } },
-		});
+		},
+		false);
 }
 
 void test_two_character_comparison_operators_consume_equals(void)
@@ -326,7 +343,8 @@ void test_two_character_comparison_operators_consume_equals(void)
 			{ .category = LESS_THAN_OR_EQUAL,    .lexeme = "<=", .lexeme_length = 2, .pos = { .row = 1, .col = 1 } },
 			{ .category = GREATER_THAN_OR_EQUAL, .lexeme = ">=", .lexeme_length = 2, .pos = { .row = 1, .col = 4 } },
 			{ .category = NOT_EQUAL,             .lexeme = "!=", .lexeme_length = 2, .pos = { .row = 1, .col = 7 } },
-		});
+		},
+		false);
 }
 
 /* ===================== Identifiers ===================== */
@@ -339,7 +357,8 @@ void test_ident_single_letter(void)
 		1,
 		(ExpectedToken[]){
 			{ .category = IDENT, .lexeme = "R", .lexeme_length = 1, .pos = { .row = 1, .col = 1 } },
-		});
+		},
+		false);
 }
 
 void test_ident_multi_letter(void)
@@ -350,7 +369,8 @@ void test_ident_multi_letter(void)
 		1,
 		(ExpectedToken[]){
 			{ .category = IDENT, .lexeme = "foo", .lexeme_length = 3, .pos = { .row = 1, .col = 1 } },
-		});
+		},
+		false);
 }
 
 void test_ident_with_digit(void)
@@ -361,7 +381,8 @@ void test_ident_with_digit(void)
 		1,
 		(ExpectedToken[]){
 			{ .category = IDENT, .lexeme = "R1", .lexeme_length = 2, .pos = { .row = 1, .col = 1 } },
-		});
+		},
+		false);
 }
 
 void test_ident_with_underscore(void)
@@ -372,7 +393,8 @@ void test_ident_with_underscore(void)
 		1,
 		(ExpectedToken[]){
 			{ .category = IDENT, .lexeme = "foo_bar", .lexeme_length = 7, .pos = { .row = 1, .col = 1 } },
-		});
+		},
+		false);
 }
 
 void test_ident_uppercase_keyword_spelling_is_ident(void)
@@ -384,7 +406,8 @@ void test_ident_uppercase_keyword_spelling_is_ident(void)
 		1,
 		(ExpectedToken[]){
 			{ .category = IDENT, .lexeme = "SELECT", .lexeme_length = 6, .pos = { .row = 1, .col = 1 } },
-		});
+		},
+		false);
 }
 
 void test_ident_keyword_prefix_with_trailing_chars_is_ident(void)
@@ -396,7 +419,8 @@ void test_ident_keyword_prefix_with_trailing_chars_is_ident(void)
 		1,
 		(ExpectedToken[]){
 			{ .category = IDENT, .lexeme = "select2", .lexeme_length = 7, .pos = { .row = 1, .col = 1 } },
-		});
+		},
+		false);
 }
 
 void test_multiple_idents_separated_by_spaces(void)
@@ -409,7 +433,8 @@ void test_multiple_idents_separated_by_spaces(void)
 			{ .category = IDENT, .lexeme = "A", .lexeme_length = 1, .pos = { .row = 1, .col = 1 } },
 			{ .category = IDENT, .lexeme = "B", .lexeme_length = 1, .pos = { .row = 1, .col = 3 } },
 			{ .category = IDENT, .lexeme = "C", .lexeme_length = 1, .pos = { .row = 1, .col = 5 } },
-		});
+		},
+		false);
 }
 
 void test_ident_adjacent_to_punctuation(void)
@@ -424,7 +449,8 @@ void test_ident_adjacent_to_punctuation(void)
 			{ .category = LPAREN, .lexeme = "(", .lexeme_length = 1, .pos = { .row = 1, .col = 2 } },
 			{ .category = IDENT,  .lexeme = "A", .lexeme_length = 1, .pos = { .row = 1, .col = 3 } },
 			{ .category = RPAREN, .lexeme = ")", .lexeme_length = 1, .pos = { .row = 1, .col = 4 } },
-		});
+		},
+		false);
 }
 
 /* ===================== Keywords ===================== */
@@ -437,7 +463,8 @@ void test_keyword_select(void)
 		1,
 		(ExpectedToken[]){
 			{ .category = SELECT, .lexeme = "select", .lexeme_length = 6, .pos = { .row = 1, .col = 1 } },
-		});
+		},
+		false);
 }
 
 void test_keyword_project(void)
@@ -448,7 +475,8 @@ void test_keyword_project(void)
 		1,
 		(ExpectedToken[]){
 			{ .category = PROJECT, .lexeme = "project", .lexeme_length = 7, .pos = { .row = 1, .col = 1 } },
-		});
+		},
+		false);
 }
 
 void test_keyword_rename(void)
@@ -459,7 +487,8 @@ void test_keyword_rename(void)
 		1,
 		(ExpectedToken[]){
 			{ .category = RENAME, .lexeme = "rename", .lexeme_length = 6, .pos = { .row = 1, .col = 1 } },
-		});
+		},
+		false);
 }
 
 void test_keyword_union(void)
@@ -470,7 +499,8 @@ void test_keyword_union(void)
 		1,
 		(ExpectedToken[]){
 			{ .category = UNION, .lexeme = "union", .lexeme_length = 5, .pos = { .row = 1, .col = 1 } },
-		});
+		},
+		false);
 }
 
 void test_keyword_intersect(void)
@@ -481,7 +511,8 @@ void test_keyword_intersect(void)
 		1,
 		(ExpectedToken[]){
 			{ .category = INTERSECT, .lexeme = "intersect", .lexeme_length = 9, .pos = { .row = 1, .col = 1 } },
-		});
+		},
+		false);
 }
 
 void test_keyword_minus(void)
@@ -492,7 +523,8 @@ void test_keyword_minus(void)
 		1,
 		(ExpectedToken[]){
 			{ .category = MINUS, .lexeme = "minus", .lexeme_length = 5, .pos = { .row = 1, .col = 1 } },
-		});
+		},
+		false);
 }
 
 void test_keyword_times(void)
@@ -503,7 +535,8 @@ void test_keyword_times(void)
 		1,
 		(ExpectedToken[]){
 			{ .category = TIMES, .lexeme = "times", .lexeme_length = 5, .pos = { .row = 1, .col = 1 } },
-		});
+		},
+		false);
 }
 
 void test_keyword_join(void)
@@ -514,7 +547,8 @@ void test_keyword_join(void)
 		1,
 		(ExpectedToken[]){
 			{ .category = JOIN, .lexeme = "join", .lexeme_length = 4, .pos = { .row = 1, .col = 1 } },
-		});
+		},
+		false);
 }
 
 void test_keyword_and(void)
@@ -525,7 +559,8 @@ void test_keyword_and(void)
 		1,
 		(ExpectedToken[]){
 			{ .category = AND, .lexeme = "and", .lexeme_length = 3, .pos = { .row = 1, .col = 1 } },
-		});
+		},
+		false);
 }
 
 void test_keyword_or(void)
@@ -536,7 +571,8 @@ void test_keyword_or(void)
 		1,
 		(ExpectedToken[]){
 			{ .category = OR, .lexeme = "or", .lexeme_length = 2, .pos = { .row = 1, .col = 1 } },
-		});
+		},
+		false);
 }
 
 void test_keyword_not(void)
@@ -547,7 +583,8 @@ void test_keyword_not(void)
 		1,
 		(ExpectedToken[]){
 			{ .category = NOT, .lexeme = "not", .lexeme_length = 3, .pos = { .row = 1, .col = 1 } },
-		});
+		},
+		false);
 }
 
 void test_keywords_in_sequence(void)
@@ -560,7 +597,234 @@ void test_keywords_in_sequence(void)
 			{ .category = UNION,     .lexeme = "union",     .lexeme_length = 5, .pos = { .row = 1, .col = 1  } },
 			{ .category = INTERSECT, .lexeme = "intersect", .lexeme_length = 9, .pos = { .row = 1, .col = 7  } },
 			{ .category = MINUS,     .lexeme = "minus",     .lexeme_length = 5, .pos = { .row = 1, .col = 17 } },
-		});
+		},
+		false);
+}
+
+/* ===================== Numbers ===================== */
+
+void test_number_single_digit(void)
+{
+	run_test(
+		"0",
+		1,
+		1,
+		(ExpectedToken[]){
+			{ .category = NUMBER, .lexeme = "0", .lexeme_length = 1, .pos = { .row = 1, .col = 1 } },
+		},
+		false);
+}
+
+void test_number_multi_digit(void)
+{
+	run_test(
+		"12345",
+		5,
+		1,
+		(ExpectedToken[]){
+			{ .category = NUMBER, .lexeme = "12345", .lexeme_length = 5, .pos = { .row = 1, .col = 1 } },
+		},
+		false);
+}
+
+void test_number_negative_single_digit(void)
+{
+	run_test(
+		"-5",
+		2,
+		1,
+		(ExpectedToken[]){
+			{ .category = NUMBER, .lexeme = "-5", .lexeme_length = 2, .pos = { .row = 1, .col = 1 } },
+		},
+		false);
+}
+
+void test_number_negative_multi_digit(void)
+{
+	run_test(
+		"-42",
+		3,
+		1,
+		(ExpectedToken[]){
+			{ .category = NUMBER, .lexeme = "-42", .lexeme_length = 3, .pos = { .row = 1, .col = 1 } },
+		},
+		false);
+}
+
+void test_number_decimal(void)
+{
+	run_test(
+		"3.14",
+		4,
+		1,
+		(ExpectedToken[]){
+			{ .category = NUMBER, .lexeme = "3.14", .lexeme_length = 4, .pos = { .row = 1, .col = 1 } },
+		},
+		false);
+}
+
+void test_number_decimal_leading_zero(void)
+{
+	run_test(
+		"0.5",
+		3,
+		1,
+		(ExpectedToken[]){
+			{ .category = NUMBER, .lexeme = "0.5", .lexeme_length = 3, .pos = { .row = 1, .col = 1 } },
+		},
+		false);
+}
+
+void test_number_decimal_trailing_zero(void)
+{
+	run_test(
+		"1.0",
+		3,
+		1,
+		(ExpectedToken[]){
+			{ .category = NUMBER, .lexeme = "1.0", .lexeme_length = 3, .pos = { .row = 1, .col = 1 } },
+		},
+		false);
+}
+
+void test_number_negative_decimal(void)
+{
+	run_test(
+		"-3.14",
+		5,
+		1,
+		(ExpectedToken[]){
+			{ .category = NUMBER, .lexeme = "-3.14", .lexeme_length = 5, .pos = { .row = 1, .col = 1 } },
+		},
+		false);
+}
+
+void test_number_decimal_all_digits(void)
+{
+	run_test(
+		"99.99",
+		5,
+		1,
+		(ExpectedToken[]){
+			{ .category = NUMBER, .lexeme = "99.99", .lexeme_length = 5, .pos = { .row = 1, .col = 1 } },
+		},
+		false);
+}
+
+void test_numbers_separated_by_comma(void)
+{
+	run_test(
+		"1,2,3",
+		5,
+		5,
+		(ExpectedToken[]){
+			{ .category = NUMBER, .lexeme = "1", .lexeme_length = 1, .pos = { .row = 1, .col = 1 } },
+			{ .category = COMMA,  .lexeme = ",", .lexeme_length = 1, .pos = { .row = 1, .col = 2 } },
+			{ .category = NUMBER, .lexeme = "2", .lexeme_length = 1, .pos = { .row = 1, .col = 3 } },
+			{ .category = COMMA,  .lexeme = ",", .lexeme_length = 1, .pos = { .row = 1, .col = 4 } },
+			{ .category = NUMBER, .lexeme = "3", .lexeme_length = 1, .pos = { .row = 1, .col = 5 } },
+		},
+		false);
+}
+
+void test_number_followed_by_ident(void)
+{
+	run_test(
+		"42R",
+		3,
+		2,
+		(ExpectedToken[]){
+			{ .category = NUMBER, .lexeme = "42", .lexeme_length = 2, .pos = { .row = 1, .col = 1 } },
+			{ .category = IDENT,  .lexeme = "R",  .lexeme_length = 1, .pos = { .row = 1, .col = 3 } },
+		},
+		false);
+}
+
+void test_number_in_comparison(void)
+{
+	run_test(
+		"x < 5",
+		5,
+		3,
+		(ExpectedToken[]){
+			{ .category = IDENT,      .lexeme = "x",   .lexeme_length = 1, .pos = { .row = 1, .col = 1 } },
+			{ .category = LESS_THAN,  .lexeme = "<",   .lexeme_length = 1, .pos = { .row = 1, .col = 3 } },
+			{ .category = NUMBER,     .lexeme = "5",   .lexeme_length = 1, .pos = { .row = 1, .col = 5 } },
+		},
+		false);
+}
+
+void test_number_negative_followed_by_space_and_ident(void)
+{
+	run_test(
+		"-5 x",
+		4,
+		2,
+		(ExpectedToken[]){
+			{ .category = NUMBER, .lexeme = "-5", .lexeme_length = 2, .pos = { .row = 1, .col = 1 } },
+			{ .category = IDENT,  .lexeme = "x",  .lexeme_length = 1, .pos = { .row = 1, .col = 4 } },
+		},
+		false);
+}
+
+void test_number_error_leading_dot(void)
+{
+	run_test(
+		".5",
+		2,
+		1,
+		(ExpectedToken[]){
+			{ .category = NUMBER, .lexeme = "5", .lexeme_length = 1, .pos = { .row = 1, .col = 2 } },
+		},
+		true);
+}
+
+void test_number_error_trailing_dot(void)
+{
+	run_test(
+		"5.",
+		2,
+		0,
+		(ExpectedToken[]){
+			{ .category = NUMBER, .lexeme = "", .lexeme_length = 0, .pos = { .row = 1, .col = 1 } },
+		},
+		true);
+}
+
+void test_number_error_bare_minus(void)
+{
+	run_test(
+		"-",
+		1,
+		0,
+		(ExpectedToken[]){
+			{ .category = NUMBER, .lexeme = "", .lexeme_length = 0, .pos = { .row = 1, .col = 1 } },
+		},
+		true);
+}
+
+void test_number_error_bare_minus_followed_by_non_digit(void)
+{
+	run_test(
+		"-x",
+		2,
+		0,
+		(ExpectedToken[]){
+			{ .category = NUMBER, .lexeme = "", .lexeme_length = 0, .pos = { .row = 1, .col = 1 } },
+		},
+		true);
+}
+
+void test_number_error_dot_without_digits_after(void)
+{
+	run_test(
+		"5.x",
+		3,
+		1,
+		(ExpectedToken[]){
+			{ .category = IDENT, .lexeme = "x", .lexeme_length = 1, .pos = { .row = 1, .col = 3 } },
+		},
+		true);
 }
 
 int main(void)
@@ -602,5 +866,23 @@ int main(void)
 	RUN_TEST(test_keyword_or);
 	RUN_TEST(test_keyword_not);
 	RUN_TEST(test_keywords_in_sequence);
+	RUN_TEST(test_number_single_digit);
+	RUN_TEST(test_number_multi_digit);
+	RUN_TEST(test_number_negative_single_digit);
+	RUN_TEST(test_number_negative_multi_digit);
+	RUN_TEST(test_number_decimal);
+	RUN_TEST(test_number_decimal_leading_zero);
+	RUN_TEST(test_number_decimal_trailing_zero);
+	RUN_TEST(test_number_negative_decimal);
+	RUN_TEST(test_number_decimal_all_digits);
+	RUN_TEST(test_numbers_separated_by_comma);
+	RUN_TEST(test_number_followed_by_ident);
+	RUN_TEST(test_number_in_comparison);
+	RUN_TEST(test_number_negative_followed_by_space_and_ident);
+	RUN_TEST(test_number_error_leading_dot);
+	RUN_TEST(test_number_error_trailing_dot);
+	RUN_TEST(test_number_error_bare_minus);
+	RUN_TEST(test_number_error_bare_minus_followed_by_non_digit);
+	RUN_TEST(test_number_error_dot_without_digits_after);
 	return UNITY_END();
 }

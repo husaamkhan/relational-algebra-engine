@@ -1,5 +1,6 @@
 #include <string.h>
 #include "lexer.h"
+#include <ctype.h>
 
 /*
  * Initializes a lexer with the given input buffer.
@@ -108,8 +109,6 @@ void lex(Lexer *lexer, Arena *arena, size_t *count_out)
 
 	while (lexer->cur_pos < (int)lexer->file_size)
 	{
-		// TODO: Missing EOF handling. If a peek ahead was done in the previous loop,
-		// or char c = cur_pos++ lead to an EOF, it needs to be handled here
 		lexer->lexeme_start  = lexer->cur_pos;
 		Token *token         = token_new(arena);
 		token->lexeme_start  = lexer->file_contents + lexer->lexeme_start;
@@ -190,7 +189,7 @@ void lex(Lexer *lexer, Arena *arena, size_t *count_out)
 				break;
 			}
 			default:
-		{
+			{
 			if ((lexer->cur_char >= 'a' && lexer->cur_char <= 'z') ||
 			    (lexer->cur_char >= 'A' && lexer->cur_char <= 'Z'))
 			{
@@ -222,8 +221,46 @@ void lex(Lexer *lexer, Arena *arena, size_t *count_out)
 				else if (len == 3 && strncmp(lex, "and",       3) == 0) token->category = AND;
 				else if (len == 2 && strncmp(lex, "or",        2) == 0) token->category = OR;
 				else if (len == 3 && strncmp(lex, "not",       3) == 0) token->category = NOT;
-				else                                                      token->category = IDENT;
+				else                                                    token->category = IDENT;
 			}
+			
+			else if (lexer->cur_char == '-' || isdigit(lexer->cur_char))
+			{
+				if (lexer->cur_char == '-')
+				{
+					advance(lexer);
+				}
+
+				if (!isdigit(lexer->cur_char))
+				{
+					arena_pop(arena);
+					lexer->has_error = true;
+					LEX_ERR("Unexpected character '%c' at %d:%d", lexer->cur_char, token->pos.row, token->pos.col);
+					continue;
+				}
+				
+				char next_char;
+				while (peek(lexer, &next_char) && isdigit(next_char)) advance(lexer);
+
+				if (peek(lexer, &next_char) && next_char == '.')
+				{
+					advance(lexer);
+
+					if (!peek(lexer, &next_char) || !isdigit(next_char))
+					{
+						arena_pop(arena);
+						lexer->has_error = true;
+						LEX_ERR("Unexpected character '%c' at %d:%d", lexer->cur_char, token->pos.row, token->pos.col);
+						continue;
+					}
+
+					while (peek(lexer, &next_char) && isdigit(next_char)) advance(lexer);
+				}
+
+				token->lexeme_length = (lexer->file_contents + lexer->cur_pos) - token->lexeme_start;
+				token->category = NUMBER;
+			}
+
 			else
 			{
 				arena_pop(arena);
@@ -231,7 +268,7 @@ void lex(Lexer *lexer, Arena *arena, size_t *count_out)
 				LEX_ERR("Unexpected character '%c' at %d:%d", lexer->cur_char, token->pos.row, token->pos.col);
 				continue;
 			}
-		}
+			}
 		}
 
 		(*count_out)++;

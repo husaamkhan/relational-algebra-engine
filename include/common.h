@@ -93,7 +93,7 @@ typedef struct
 	TreeNode *parent;
 	TreeNode *left_child;
 	TreeNode *right_child;
-	// TODO: need to store the data
+	char *data;
 } TreeNode;
 
 typedef struct
@@ -128,6 +128,7 @@ typedef enum
 	STRING,
 	WORD,
 	NEWLINE, // TODO: why do we need this?
+	COMMENT
 } Category;
 
 typedef struct

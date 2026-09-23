@@ -239,6 +239,29 @@ void lex(Lexer *lexer, Arena *arena, size_t *count_out)
 				token->lexeme_length = (lexer->file_contents + lexer->cur_pos) - token->lexeme_start;
 				break;
 			}
+			case '/':
+			{
+				char next_char;
+				if (!peek(lexer, &next_char) || next_char != '/')
+				{
+					arena_pop(arena);
+					lexer->has_error = true;
+					LEX_ERR("Unexpected character '%c' at %d:%d", lexer->cur_char, token->pos.row, token->pos.col);
+					break;
+				}
+
+				token->category = COMMENT;
+				advance(lexer);
+				
+				while (true)
+				{
+					if (!peek(lexer, &next_char) || next_char == '\n') break;
+					advance(lexer);
+				}
+
+				arena_pop(arena);
+				continue;
+			}
 			default:
 			{
 				if ((lexer->cur_char >= 'a' && lexer->cur_char <= 'z') ||

@@ -57,4 +57,6 @@
 -   Added proper handling for '.' which will be required by the parser to know when an attribute is being used
 -   Finally completed the lexer
 
-
+## September 23
+-   Realized I forgot to add comment handling to lexer.
+-   Beginning work on parser

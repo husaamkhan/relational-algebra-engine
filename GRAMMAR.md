@@ -194,8 +194,7 @@ number                = [ "-" ] , digit , { digit } , [ "." , digit , { digit } 
 
 string                = bare-string | quoted-string ;
 
-bare-string           = ( ? any character except "," "(" ")" " " "'" and newline ? ) ,
-                        { ? any character except "," "(" ")" " " "'" and newline ? } ;
+bare-string           = letter , { letter | digit | "_" | "-" | "@" } ;
 
 quoted-string         = "'" ,
                         { ( ? any character except "'" and newline ? ) | "''" } ,

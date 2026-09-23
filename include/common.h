@@ -95,43 +95,24 @@ typedef struct
 
 typedef enum
 {
-	/* Punctuation */
-	LPAREN,             /* (  */
-	RPAREN,             /* )  */
-	LBRACKET,           /* [  */
-	RBRACKET,           /* ]  */
-	LBRACE,             /* {  */
-	RBRACE,             /* }  */
-	COMMA,              /* ,  */
-
-	/* Comparison operators */
-	EQUAL,              /* =  */
-	NOT_EQUAL,          /* != */
-	LESS_THAN,          /* <  */
-	LESS_THAN_OR_EQUAL, /* <= */
-	GREATER_THAN,       /* >  */
-	GREATER_THAN_OR_EQUAL, /* >= */
-
-	/* Literals and names */
+	LPAREN,
+	RPAREN,
+	LBRACKET,
+	RBRACKET,
+	LBRACE,
+	RBRACE,
+	DOT,
+	COMMA,
+	EQUAL,
+	NOT_EQUAL,
+	LESS_THAN,
+	LESS_THAN_OR_EQUAL,
+	GREATER_THAN,
+	GREATER_THAN_OR_EQUAL,
 	NUMBER,
 	STRING,
-	IDENT,
-
-	/* Keywords */
-	SELECT,
-	PROJECT,
-	RENAME,
-	UNION,
-	INTERSECT,
-	MINUS,
-	TIMES,
-	JOIN,
-	AND,
-	OR,
-	NOT,
-
-	/* Control */
-	NEWLINE,
+	WORD,
+	NEWLINE, // TODO: why do we need this?
 } Category;
 
 typedef struct

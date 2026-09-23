@@ -1,4 +1,3 @@
-#include <string.h>
 #include "lexer.h"
 #include <ctype.h>
 
@@ -124,13 +123,14 @@ void lex(Lexer *lexer, Arena *arena, size_t *count_out)
 				arena_pop(arena);
 				continue;
 			}
-			case '\n': token->category = NEWLINE; break;
+			case '\n': token->category = NEWLINE; 		break;
 			case '(': token->category = LPAREN;		break;
 			case ')': token->category = RPAREN;    		break;
 			case '[': token->category = LBRACKET;  		break;
 			case ']': token->category = RBRACKET;  		break;
 			case '{': token->category = LBRACE;    		break;
 			case '}': token->category = RBRACE;    		break;
+			case '.': token->category = DOT;		break;
 			case ',': token->category = COMMA;		break;
 			case '=': token->category = EQUAL;		break;
 			case '!':
@@ -188,86 +188,126 @@ void lex(Lexer *lexer, Arena *arena, size_t *count_out)
 				}
 				break;
 			}
-			default:
+			case '\'':
 			{
-			if ((lexer->cur_char >= 'a' && lexer->cur_char <= 'z') ||
-			    (lexer->cur_char >= 'A' && lexer->cur_char <= 'Z'))
-			{
-				/* Consume the rest of the identifier: letters, digits, underscores. */
-				char next_char;
-				while (peek(lexer, &next_char) &&
-				       ((next_char >= 'a' && next_char <= 'z') ||
-				        (next_char >= 'A' && next_char <= 'Z') ||
-				        (next_char >= '0' && next_char <= '9') ||
-				        next_char == '_'))
+				token->category = STRING;
+
+				// Required to prevent lexer from trying to set token->lexeme_length after the while loop
+				bool string_error = false;
+
+				while (true)
 				{
+					char next_char;
+					if (!peek(lexer, &next_char))
+					{
+						arena_pop(arena);
+						lexer->has_error = true;
+						string_error = true;
+						LEX_ERR("Unterminated string: EOF encountered before closing quote at %d:%d", lexer->pos.row, lexer->pos.col);
+						break;
+					}
+
+					if (next_char == '\n')
+					{
+						arena_pop(arena);
+						lexer->has_error = true;
+						string_error = true;
+						LEX_ERR("Unterminated string: newline encountered before closing quote at %d:%d", lexer->pos.row, lexer->pos.col);
+						break;
+					}
+
+					// loop if single quote is escaped with 2 single quotes
+					if (next_char != '\'')
+					{
+						advance(lexer);
+						continue;
+					}
+
 					advance(lexer);
-				}
 
-				token->lexeme_length = lexer->cur_pos - lexer->lexeme_start;
-
-				/* Classify: check if the lexeme exactly matches a keyword. */
-				const char *lex = token->lexeme_start;
-				size_t      len = token->lexeme_length;
-
-				if      (len == 6 && strncmp(lex, "select",    6) == 0) token->category = SELECT;
-				else if (len == 7 && strncmp(lex, "project",   7) == 0) token->category = PROJECT;
-				else if (len == 6 && strncmp(lex, "rename",    6) == 0) token->category = RENAME;
-				else if (len == 5 && strncmp(lex, "union",     5) == 0) token->category = UNION;
-				else if (len == 9 && strncmp(lex, "intersect", 9) == 0) token->category = INTERSECT;
-				else if (len == 5 && strncmp(lex, "minus",     5) == 0) token->category = MINUS;
-				else if (len == 5 && strncmp(lex, "times",     5) == 0) token->category = TIMES;
-				else if (len == 4 && strncmp(lex, "join",      4) == 0) token->category = JOIN;
-				else if (len == 3 && strncmp(lex, "and",       3) == 0) token->category = AND;
-				else if (len == 2 && strncmp(lex, "or",        2) == 0) token->category = OR;
-				else if (len == 3 && strncmp(lex, "not",       3) == 0) token->category = NOT;
-				else                                                    token->category = IDENT;
-			}
-			
-			else if (lexer->cur_char == '-' || isdigit(lexer->cur_char))
-			{
-				if (lexer->cur_char == '-')
-				{
-					advance(lexer);
-				}
-
-				if (!isdigit(lexer->cur_char))
-				{
-					arena_pop(arena);
-					lexer->has_error = true;
-					LEX_ERR("Unexpected character '%c' at %d:%d", lexer->cur_char, token->pos.row, token->pos.col);
-					continue;
+					if (peek(lexer, &next_char) && next_char == '\'')
+					{
+						advance(lexer);
+						continue;
+					}
+					
+					break; // only reached if a single quote is given
 				}
 				
-				char next_char;
-				while (peek(lexer, &next_char) && isdigit(next_char)) advance(lexer);
+				if (string_error) continue;
 
-				if (peek(lexer, &next_char) && next_char == '.')
+				token->lexeme_length = (lexer->file_contents + lexer->cur_pos) - token->lexeme_start;
+				break;
+			}
+			default:
+			{
+				if ((lexer->cur_char >= 'a' && lexer->cur_char <= 'z') ||
+				    (lexer->cur_char >= 'A' && lexer->cur_char <= 'Z'))
 				{
-					advance(lexer);
+					token->category = WORD;
 
-					if (!peek(lexer, &next_char) || !isdigit(next_char))
+					char next_char;
+
+					while (peek(lexer, &next_char) &&
+					       ((next_char >= 'a' && next_char <= 'z') ||
+						(next_char >= 'A' && next_char <= 'Z') ||
+						(next_char >= '0' && next_char <= '9') ||
+						next_char == '_' ||
+						next_char == '-' ||
+						next_char == '@'))
+					{
+						advance(lexer);
+					}
+
+					token->lexeme_length =
+						(lexer->file_contents + lexer->cur_pos) -
+						token->lexeme_start;
+				}
+
+				else if (lexer->cur_char == '-' || isdigit(lexer->cur_char))
+				{
+					if (lexer->cur_char == '-')
+					{
+						advance(lexer);
+					}
+
+					if (!isdigit(lexer->cur_char))
 					{
 						arena_pop(arena);
 						lexer->has_error = true;
 						LEX_ERR("Unexpected character '%c' at %d:%d", lexer->cur_char, token->pos.row, token->pos.col);
 						continue;
 					}
-
+					
+					char next_char;
 					while (peek(lexer, &next_char) && isdigit(next_char)) advance(lexer);
+
+					if (peek(lexer, &next_char) && next_char == '.')
+					{
+						advance(lexer);
+
+						if (!peek(lexer, &next_char) || !isdigit(next_char))
+						{
+							arena_pop(arena);
+							lexer->has_error = true;
+							LEX_ERR("Unexpected character '%c' at %d:%d", lexer->cur_char, token->pos.row, token->pos.col);
+							continue;
+						}
+
+						while (peek(lexer, &next_char) && isdigit(next_char)) advance(lexer);
+					}
+
+					token->lexeme_length = (lexer->file_contents + lexer->cur_pos) - token->lexeme_start;
+					token->category = NUMBER;
 				}
 
-				token->lexeme_length = (lexer->file_contents + lexer->cur_pos) - token->lexeme_start;
-				token->category = NUMBER;
-			}
-
-			else
-			{
-				arena_pop(arena);
-				lexer->has_error = true;
-				LEX_ERR("Unexpected character '%c' at %d:%d", lexer->cur_char, token->pos.row, token->pos.col);
-				continue;
-			}
+				else
+				{
+					arena_pop(arena);
+					lexer->has_error = true;
+					LEX_ERR("Unexpected character '%c' at %d:%d", lexer->cur_char, token->pos.row, token->pos.col);
+					continue;
+				}
 			}
 		}
 

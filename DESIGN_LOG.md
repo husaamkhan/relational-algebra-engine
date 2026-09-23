@@ -40,3 +40,21 @@
         -   Added identifier and keyword recognition
         -   Working on number recognition. Ran into a lot of issues here with incorrect EOF handling causing infinite loops.
     -   Will be implementing strings tomorrow and will move on to the parser 
+
+## September 22
+-   Continuing work on lexer. Implementing strings
+-   Running into problems with bare strings. I realized that there were a lot of special characters like [ . = " [ and ] that the
+    grammar was allowing in bare strings. This would probably cause issues related to identifiers, brackets, etc., being treated as
+    strings rather than a full statement with multiple tokens (e.g how will the lexer know that select[...] is not a bare string).
+    -   This is leading to more problems because the bare-string grammar rule ends up being identical to the identifier rule, so
+        the lexer is not able to distinguish between the 2 anymore. I think the only way I can handle this is by replacing the
+        IDENTIFIER, STRING, and KEYWORD tokens with a single WORD token. The work of determining the word type will be handed to
+        the parser, which will determine the exact word type based on what token it is expecting at a certain position.
+-   I realized that if a bare-string starts with -, it would be awkward to figure out whether whatever comes after the - is a
+    number or a letter. it would be even worse in cases where a bare-string starts with digits. So, I have updated the grammar to
+    remove these possibilities.
+    -   Same applies to !
+-   Added proper handling for '.' which will be required by the parser to know when an attribute is being used
+-   Finally completed the lexer
+
+

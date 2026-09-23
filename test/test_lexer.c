@@ -10,6 +10,7 @@ static const char *CATEGORY_NAMES[] = {
 	[LBRACE]                = "LBRACE",
 	[RBRACE]                = "RBRACE",
 	[COMMA]                 = "COMMA",
+	[DOT]			= "DOT",
 	[EQUAL]                 = "EQUAL",
 	[NOT_EQUAL]             = "NOT_EQUAL",
 	[LESS_THAN]             = "LESS_THAN",
@@ -18,18 +19,7 @@ static const char *CATEGORY_NAMES[] = {
 	[GREATER_THAN_OR_EQUAL] = "GREATER_THAN_OR_EQUAL",
 	[NUMBER]                = "NUMBER",
 	[STRING]                = "STRING",
-	[IDENT]                 = "IDENT",
-	[SELECT]                = "SELECT",
-	[PROJECT]               = "PROJECT",
-	[RENAME]                = "RENAME",
-	[UNION]                 = "UNION",
-	[INTERSECT]             = "INTERSECT",
-	[MINUS]                 = "MINUS",
-	[TIMES]                 = "TIMES",
-	[JOIN]                  = "JOIN",
-	[AND]                   = "AND",
-	[OR]                    = "OR",
-	[NOT]                   = "NOT",
+	[WORD]                  = "WORD",
 	[NEWLINE]               = "NEWLINE",
 };
 
@@ -346,259 +336,150 @@ void test_two_character_comparison_operators_consume_equals(void)
 		},
 		false);
 }
-
-/* ===================== Identifiers ===================== */
-
-void test_ident_single_letter(void)
+static void test_word_single_letter(void)
 {
-	run_test(
-		"R",
-		1,
-		1,
-		(ExpectedToken[]){
-			{ .category = IDENT, .lexeme = "R", .lexeme_length = 1, .pos = { .row = 1, .col = 1 } },
-		},
-		false);
+    const char *src = "R";
+    ExpectedToken expected[] = {
+        {WORD, "R", 1, {1, 1}},
+    };
+
+    run_test(src, strlen(src), 1, expected, false);
 }
 
-void test_ident_multi_letter(void)
+static void test_word_multi_letter(void)
 {
-	run_test(
-		"foo",
-		3,
-		1,
-		(ExpectedToken[]){
-			{ .category = IDENT, .lexeme = "foo", .lexeme_length = 3, .pos = { .row = 1, .col = 1 } },
-		},
-		false);
+    const char *src = "foo";
+    ExpectedToken expected[] = {
+        {WORD, "foo", 3, {1, 1}},
+    };
+
+    run_test(src, strlen(src), 1, expected, false);
 }
 
-void test_ident_with_digit(void)
+static void test_word_with_digit(void)
 {
-	run_test(
-		"R1",
-		2,
-		1,
-		(ExpectedToken[]){
-			{ .category = IDENT, .lexeme = "R1", .lexeme_length = 2, .pos = { .row = 1, .col = 1 } },
-		},
-		false);
+    const char *src = "R1";
+    ExpectedToken expected[] = {
+        {WORD, "R1", 2, {1, 1}},
+    };
+
+    run_test(src, strlen(src), 1, expected, false);
 }
 
-void test_ident_with_underscore(void)
+static void test_word_with_underscore(void)
 {
-	run_test(
-		"foo_bar",
-		7,
-		1,
-		(ExpectedToken[]){
-			{ .category = IDENT, .lexeme = "foo_bar", .lexeme_length = 7, .pos = { .row = 1, .col = 1 } },
-		},
-		false);
+    const char *src = "foo_bar";
+    ExpectedToken expected[] = {
+        {WORD, "foo_bar", 7, {1, 1}},
+    };
+
+    run_test(src, strlen(src), 1, expected, false);
 }
 
-void test_ident_uppercase_keyword_spelling_is_ident(void)
+static void test_word_with_at(void)
 {
-	/* Keywords are lowercase only — "SELECT" is an identifier. */
-	run_test(
-		"SELECT",
-		6,
-		1,
-		(ExpectedToken[]){
-			{ .category = IDENT, .lexeme = "SELECT", .lexeme_length = 6, .pos = { .row = 1, .col = 1 } },
-		},
-		false);
+	const char *src = "user@host";
+	ExpectedToken expected[] = {
+		{WORD, "user@host", 9, {1, 1}},
+	};
+	run_test(src, strlen(src), 1, expected, false);
 }
 
-void test_ident_keyword_prefix_with_trailing_chars_is_ident(void)
+static void test_at_cannot_start_word(void)
 {
-	/* "select2" begins with a keyword but is not an exact match — must be IDENT. */
-	run_test(
-		"select2",
-		7,
-		1,
-		(ExpectedToken[]){
-			{ .category = IDENT, .lexeme = "select2", .lexeme_length = 7, .pos = { .row = 1, .col = 1 } },
-		},
-		false);
+	const char *src = "@host";
+	ExpectedToken expected[] = {
+		{WORD, "host", 4, {1, 2}},
+	};
+	run_test(src, strlen(src), 1, expected, true);
 }
 
-void test_multiple_idents_separated_by_spaces(void)
+static void test_word_bare_string(void)
 {
-	run_test(
-		"A B C",
-		5,
-		3,
-		(ExpectedToken[]){
-			{ .category = IDENT, .lexeme = "A", .lexeme_length = 1, .pos = { .row = 1, .col = 1 } },
-			{ .category = IDENT, .lexeme = "B", .lexeme_length = 1, .pos = { .row = 1, .col = 3 } },
-			{ .category = IDENT, .lexeme = "C", .lexeme_length = 1, .pos = { .row = 1, .col = 5 } },
-		},
-		false);
+    const char *src = "hello-world";
+    ExpectedToken expected[] = {
+        {WORD, "hello-world", 11, {1, 1}},
+    };
+
+    run_test(src, strlen(src), 1, expected, false);
 }
 
-void test_ident_adjacent_to_punctuation(void)
+static void test_words_separated_by_spaces(void)
 {
-	/* No spaces — ident must stop at the first non-identifier character. */
-	run_test(
-		"R(A)",
-		4,
-		4,
-		(ExpectedToken[]){
-			{ .category = IDENT,  .lexeme = "R", .lexeme_length = 1, .pos = { .row = 1, .col = 1 } },
-			{ .category = LPAREN, .lexeme = "(", .lexeme_length = 1, .pos = { .row = 1, .col = 2 } },
-			{ .category = IDENT,  .lexeme = "A", .lexeme_length = 1, .pos = { .row = 1, .col = 3 } },
-			{ .category = RPAREN, .lexeme = ")", .lexeme_length = 1, .pos = { .row = 1, .col = 4 } },
-		},
-		false);
+    const char *src = "foo bar baz";
+    ExpectedToken expected[] = {
+        {WORD, "foo", 3, {1, 1}},
+        {WORD, "bar", 3, {1, 5}},
+        {WORD, "baz", 3, {1, 9}},
+    };
+
+    run_test(src, strlen(src), 3, expected, false);
 }
 
-/* ===================== Keywords ===================== */
-
-void test_keyword_select(void)
+static void test_words_separated_by_comma(void)
 {
-	run_test(
-		"select",
-		6,
-		1,
-		(ExpectedToken[]){
-			{ .category = SELECT, .lexeme = "select", .lexeme_length = 6, .pos = { .row = 1, .col = 1 } },
-		},
-		false);
+    const char *src = "foo,bar";
+    ExpectedToken expected[] = {
+        {WORD, "foo", 3, {1, 1}},
+        {COMMA, ",", 1, {1, 4}},
+        {WORD, "bar", 3, {1, 5}},
+    };
+
+    run_test(src, strlen(src), 3, expected, false);
 }
 
-void test_keyword_project(void)
+static void test_words_separated_by_parentheses(void)
 {
-	run_test(
-		"project",
-		7,
-		1,
-		(ExpectedToken[]){
-			{ .category = PROJECT, .lexeme = "project", .lexeme_length = 7, .pos = { .row = 1, .col = 1 } },
-		},
-		false);
+    const char *src = "foo(bar)";
+    ExpectedToken expected[] = {
+        {WORD, "foo", 3, {1, 1}},
+        {LPAREN, "(", 1, {1, 4}},
+        {WORD, "bar", 3, {1, 5}},
+        {RPAREN, ")", 1, {1, 8}},
+    };
+
+    run_test(src, strlen(src), 4, expected, false);
 }
 
-void test_keyword_rename(void)
+static void test_word_stops_at_dot(void)
 {
-	run_test(
-		"rename",
-		6,
-		1,
-		(ExpectedToken[]){
-			{ .category = RENAME, .lexeme = "rename", .lexeme_length = 6, .pos = { .row = 1, .col = 1 } },
-		},
-		false);
+	const char *src = "Emp.DID";
+	ExpectedToken expected[] = {
+		{WORD, "Emp", 3, {1, 1}},
+		{DOT, ".", 1, {1, 4}},
+		{WORD, "DID", 3, {1, 5}},
+	};
+	run_test(src, strlen(src), 3, expected, false);
 }
 
-void test_keyword_union(void)
+static void test_word_stops_at_single_quote(void)
 {
-	run_test(
-		"union",
-		5,
-		1,
-		(ExpectedToken[]){
-			{ .category = UNION, .lexeme = "union", .lexeme_length = 5, .pos = { .row = 1, .col = 1 } },
-		},
-		false);
+	const char *src = "hello'world'";
+	ExpectedToken expected[] = {
+		{WORD, "hello", 5, {1, 1}},
+		{STRING, "'world'", 7, {1, 6}},
+	};
+	run_test(src, strlen(src), 2, expected, false);
 }
 
-void test_keyword_intersect(void)
+static void test_word_stops_at_double_quote(void)
 {
-	run_test(
-		"intersect",
-		9,
-		1,
-		(ExpectedToken[]){
-			{ .category = INTERSECT, .lexeme = "intersect", .lexeme_length = 9, .pos = { .row = 1, .col = 1 } },
-		},
-		false);
+	const char *src = "hello\"world";
+	ExpectedToken expected[] = {
+		{WORD, "hello", 5, {1, 1}},
+		{WORD, "world", 5, {1, 7}},
+	};
+	run_test(src, strlen(src), 2, expected, true);
 }
 
-void test_keyword_minus(void)
+static void test_word_stops_at_exclamation(void)
 {
-	run_test(
-		"minus",
-		5,
-		1,
-		(ExpectedToken[]){
-			{ .category = MINUS, .lexeme = "minus", .lexeme_length = 5, .pos = { .row = 1, .col = 1 } },
-		},
-		false);
-}
-
-void test_keyword_times(void)
-{
-	run_test(
-		"times",
-		5,
-		1,
-		(ExpectedToken[]){
-			{ .category = TIMES, .lexeme = "times", .lexeme_length = 5, .pos = { .row = 1, .col = 1 } },
-		},
-		false);
-}
-
-void test_keyword_join(void)
-{
-	run_test(
-		"join",
-		4,
-		1,
-		(ExpectedToken[]){
-			{ .category = JOIN, .lexeme = "join", .lexeme_length = 4, .pos = { .row = 1, .col = 1 } },
-		},
-		false);
-}
-
-void test_keyword_and(void)
-{
-	run_test(
-		"and",
-		3,
-		1,
-		(ExpectedToken[]){
-			{ .category = AND, .lexeme = "and", .lexeme_length = 3, .pos = { .row = 1, .col = 1 } },
-		},
-		false);
-}
-
-void test_keyword_or(void)
-{
-	run_test(
-		"or",
-		2,
-		1,
-		(ExpectedToken[]){
-			{ .category = OR, .lexeme = "or", .lexeme_length = 2, .pos = { .row = 1, .col = 1 } },
-		},
-		false);
-}
-
-void test_keyword_not(void)
-{
-	run_test(
-		"not",
-		3,
-		1,
-		(ExpectedToken[]){
-			{ .category = NOT, .lexeme = "not", .lexeme_length = 3, .pos = { .row = 1, .col = 1 } },
-		},
-		false);
-}
-
-void test_keywords_in_sequence(void)
-{
-	run_test(
-		"union intersect minus",
-		21,
-		3,
-		(ExpectedToken[]){
-			{ .category = UNION,     .lexeme = "union",     .lexeme_length = 5, .pos = { .row = 1, .col = 1  } },
-			{ .category = INTERSECT, .lexeme = "intersect", .lexeme_length = 9, .pos = { .row = 1, .col = 7  } },
-			{ .category = MINUS,     .lexeme = "minus",     .lexeme_length = 5, .pos = { .row = 1, .col = 17 } },
-		},
-		false);
+	const char *src = "hello!world";
+	ExpectedToken expected[] = {
+		{WORD, "hello", 5, {1, 1}},
+		{WORD, "world", 5, {1, 7}},
+	};
+	run_test(src, strlen(src), 2, expected, true);
 }
 
 /* ===================== Numbers ===================== */
@@ -727,7 +608,7 @@ void test_numbers_separated_by_comma(void)
 		false);
 }
 
-void test_number_followed_by_ident(void)
+void test_number_followed_by_word(void)
 {
 	run_test(
 		"42R",
@@ -735,7 +616,7 @@ void test_number_followed_by_ident(void)
 		2,
 		(ExpectedToken[]){
 			{ .category = NUMBER, .lexeme = "42", .lexeme_length = 2, .pos = { .row = 1, .col = 1 } },
-			{ .category = IDENT,  .lexeme = "R",  .lexeme_length = 1, .pos = { .row = 1, .col = 3 } },
+			{ .category = WORD,   .lexeme = "R",  .lexeme_length = 1, .pos = { .row = 1, .col = 3 } },
 		},
 		false);
 }
@@ -747,14 +628,14 @@ void test_number_in_comparison(void)
 		5,
 		3,
 		(ExpectedToken[]){
-			{ .category = IDENT,      .lexeme = "x",   .lexeme_length = 1, .pos = { .row = 1, .col = 1 } },
+			{ .category = WORD,      .lexeme = "x",   .lexeme_length = 1, .pos = { .row = 1, .col = 1 } },
 			{ .category = LESS_THAN,  .lexeme = "<",   .lexeme_length = 1, .pos = { .row = 1, .col = 3 } },
 			{ .category = NUMBER,     .lexeme = "5",   .lexeme_length = 1, .pos = { .row = 1, .col = 5 } },
 		},
 		false);
 }
 
-void test_number_negative_followed_by_space_and_ident(void)
+void test_number_negative_followed_by_space_and_word(void)
 {
 	run_test(
 		"-5 x",
@@ -762,21 +643,19 @@ void test_number_negative_followed_by_space_and_ident(void)
 		2,
 		(ExpectedToken[]){
 			{ .category = NUMBER, .lexeme = "-5", .lexeme_length = 2, .pos = { .row = 1, .col = 1 } },
-			{ .category = IDENT,  .lexeme = "x",  .lexeme_length = 1, .pos = { .row = 1, .col = 4 } },
+			{ .category = WORD,  .lexeme = "x",  .lexeme_length = 1, .pos = { .row = 1, .col = 4 } },
 		},
 		false);
 }
 
-void test_number_error_leading_dot(void)
+static void test_number_leading_dot(void)
 {
-	run_test(
-		".5",
-		2,
-		1,
-		(ExpectedToken[]){
-			{ .category = NUMBER, .lexeme = "5", .lexeme_length = 1, .pos = { .row = 1, .col = 2 } },
-		},
-		true);
+	const char *src = ".5";
+	ExpectedToken expected[] = {
+		{DOT, ".", 1, {1, 1}},
+		{NUMBER, "5", 1, {1, 2}},
+	};
+	run_test(src, strlen(src), 2, expected, false);
 }
 
 void test_number_error_trailing_dot(void)
@@ -822,9 +701,153 @@ void test_number_error_dot_without_digits_after(void)
 		3,
 		1,
 		(ExpectedToken[]){
-			{ .category = IDENT, .lexeme = "x", .lexeme_length = 1, .pos = { .row = 1, .col = 3 } },
+			{ .category = WORD, .lexeme = "x", .lexeme_length = 1, .pos = { .row = 1, .col = 3 } },
 		},
 		true);
+}
+
+/* ===================== Quoted Strings ===================== */
+
+static void test_string_basic(void)
+{
+	const char *src = "'Bob'";
+	ExpectedToken expected[] = {
+		{STRING, "'Bob'", 5, {1, 1}},
+	};
+	run_test(src, strlen(src), 1, expected, false);
+}
+
+static void test_string_with_comma(void)
+{
+	const char *src = "'a,b'";
+	ExpectedToken expected[] = {
+		{STRING, "'a,b'", 5, {1, 1}},
+	};
+	run_test(src, strlen(src), 1, expected, false);
+}
+
+static void test_string_with_open_parenthesis(void)
+{
+	const char *src = "'(Bob'";
+	ExpectedToken expected[] = {
+		{STRING, "'(Bob'", 6, {1, 1}},
+	};
+	run_test(src, strlen(src), 1, expected, false);
+}
+
+static void test_string_with_parentheses(void)
+{
+	const char *src = "'Bob)'";
+	ExpectedToken expected[] = {
+		{STRING, "'Bob)'", 6, {1, 1}},
+	};
+	run_test(src, strlen(src), 1, expected, false);
+}
+
+static void test_string_with_space(void)
+{
+	const char *src = "'hello world'";
+	ExpectedToken expected[] = {
+		{STRING, "'hello world'", 13, {1, 1}},
+	};
+	run_test(src, strlen(src), 1, expected, false);
+}
+
+static void test_string_with_quote(void)
+{
+	const char *src = "'O''Brien'";
+	ExpectedToken expected[] = {
+		{STRING, "'O''Brien'", 10, {1, 1}},
+	};
+	run_test(src, strlen(src), 1, expected, false);
+}
+
+static void test_string_unterminated(void)
+{
+	const char *src = "'Bob";
+	ExpectedToken expected[] = {
+	};
+	run_test(src, strlen(src), 0, expected, true);
+}
+
+static void test_double_quote_is_invalid(void)
+{
+	const char *src = "\"Bob\"";
+	ExpectedToken expected[] = {
+		{WORD, "Bob", 3, {1, 2}},
+	};
+	run_test(src, strlen(src), 1, expected, true);
+}
+
+static void test_string_newline(void)
+{
+	const char *src = "'hello\nworld'";
+	ExpectedToken expected[] = {
+		{NEWLINE, "\n", 1, {1, 7}},
+		{WORD, "world", 5, {2, 1}},
+	};
+	run_test(src, strlen(src), 2, expected, true);
+}
+static void test_string_empty(void)
+{
+	const char *src = "''";
+	ExpectedToken expected[] = {
+		{STRING, "''", 2, {1, 1}},
+	};
+	run_test(src, strlen(src), 1, expected, false);
+}
+
+static void test_select_statement(void)
+{
+	const char *src = "select[x=3](R)";
+	ExpectedToken expected[] = {
+		{WORD, "select", 6, {1, 1}},
+		{LBRACKET, "[", 1, {1, 7}},
+		{WORD, "x", 1, {1, 8}},
+		{EQUAL, "=", 1, {1, 9}},
+		{NUMBER, "3", 1, {1, 10}},
+		{RBRACKET, "]", 1, {1, 11}},
+		{LPAREN, "(", 1, {1, 12}},
+		{WORD, "R", 1, {1, 13}},
+		{RPAREN, ")", 1, {1, 14}},
+	};
+	run_test(src, strlen(src), 9, expected, false);
+}
+
+static void test_select_statement_with_string(void)
+{
+	const char *src = "select[Name='Bob'](Emp)";
+	ExpectedToken expected[] = {
+		{WORD, "select", 6, {1, 1}},
+		{LBRACKET, "[", 1, {1, 7}},
+		{WORD, "Name", 4, {1, 8}},
+		{EQUAL, "=", 1, {1, 12}},
+		{STRING, "'Bob'", 5, {1, 13}},
+		{RBRACKET, "]", 1, {1, 18}},
+		{LPAREN, "(", 1, {1, 19}},
+		{WORD, "Emp", 3, {1, 20}},
+		{RPAREN, ")", 1, {1, 23}},
+	};
+	run_test(src, strlen(src), 9, expected, false);
+}
+
+static void test_select_with_qualified_attribute(void)
+{
+	const char *src = "select[Emp.DID>=30](Emp)";
+	ExpectedToken expected[] = {
+		{WORD, "select", 6, {1, 1}},
+		{LBRACKET, "[", 1, {1, 7}},
+		{WORD, "Emp", 3, {1, 8}},
+		{DOT, ".", 1, {1, 11}},
+		{WORD, "DID", 3, {1, 12}},
+		{GREATER_THAN_OR_EQUAL, ">=", 2, {1, 15}},
+		{NUMBER, "30", 2, {1, 17}},
+		{RBRACKET, "]", 1, {1, 19}},
+		{LPAREN, "(", 1, {1, 20}},
+		{WORD, "Emp", 3, {1, 21}},
+		{RPAREN, ")", 1, {1, 24}},
+	};
+	run_test(src, strlen(src), 11, expected, false);
 }
 
 int main(void)
@@ -846,26 +869,18 @@ int main(void)
 	RUN_TEST(test_spaces_are_ignored);
 	RUN_TEST(test_newline_is_emitted_and_updates_position);
 	RUN_TEST(test_two_character_comparison_operators_consume_equals);
-	RUN_TEST(test_ident_single_letter);
-	RUN_TEST(test_ident_multi_letter);
-	RUN_TEST(test_ident_with_digit);
-	RUN_TEST(test_ident_with_underscore);
-	RUN_TEST(test_ident_uppercase_keyword_spelling_is_ident);
-	RUN_TEST(test_ident_keyword_prefix_with_trailing_chars_is_ident);
-	RUN_TEST(test_multiple_idents_separated_by_spaces);
-	RUN_TEST(test_ident_adjacent_to_punctuation);
-	RUN_TEST(test_keyword_select);
-	RUN_TEST(test_keyword_project);
-	RUN_TEST(test_keyword_rename);
-	RUN_TEST(test_keyword_union);
-	RUN_TEST(test_keyword_intersect);
-	RUN_TEST(test_keyword_minus);
-	RUN_TEST(test_keyword_times);
-	RUN_TEST(test_keyword_join);
-	RUN_TEST(test_keyword_and);
-	RUN_TEST(test_keyword_or);
-	RUN_TEST(test_keyword_not);
-	RUN_TEST(test_keywords_in_sequence);
+	RUN_TEST(test_word_single_letter);
+	RUN_TEST(test_word_multi_letter);
+	RUN_TEST(test_word_with_digit);
+	RUN_TEST(test_word_with_underscore);
+	RUN_TEST(test_words_separated_by_spaces);
+	RUN_TEST(test_word_bare_string);
+	RUN_TEST(test_words_separated_by_comma);
+	RUN_TEST(test_words_separated_by_parentheses);
+	RUN_TEST(test_word_stops_at_dot);
+	RUN_TEST(test_word_stops_at_single_quote);
+	RUN_TEST(test_word_stops_at_double_quote);
+	RUN_TEST(test_word_stops_at_exclamation);
 	RUN_TEST(test_number_single_digit);
 	RUN_TEST(test_number_multi_digit);
 	RUN_TEST(test_number_negative_single_digit);
@@ -876,13 +891,26 @@ int main(void)
 	RUN_TEST(test_number_negative_decimal);
 	RUN_TEST(test_number_decimal_all_digits);
 	RUN_TEST(test_numbers_separated_by_comma);
-	RUN_TEST(test_number_followed_by_ident);
+	RUN_TEST(test_number_followed_by_word);
 	RUN_TEST(test_number_in_comparison);
-	RUN_TEST(test_number_negative_followed_by_space_and_ident);
-	RUN_TEST(test_number_error_leading_dot);
+	RUN_TEST(test_number_negative_followed_by_space_and_word);
+	RUN_TEST(test_number_leading_dot);
 	RUN_TEST(test_number_error_trailing_dot);
 	RUN_TEST(test_number_error_bare_minus);
 	RUN_TEST(test_number_error_bare_minus_followed_by_non_digit);
 	RUN_TEST(test_number_error_dot_without_digits_after);
+	RUN_TEST(test_string_basic);
+	RUN_TEST(test_string_with_comma);
+	RUN_TEST(test_string_with_parentheses);
+	RUN_TEST(test_string_with_open_parenthesis);
+	RUN_TEST(test_string_with_space);
+	RUN_TEST(test_string_with_quote);
+	RUN_TEST(test_string_empty);
+	RUN_TEST(test_string_unterminated);
+	RUN_TEST(test_double_quote_is_invalid);
+	RUN_TEST(test_string_newline);
+	RUN_TEST(test_select_statement);
+	RUN_TEST(test_select_statement_with_string);
+	RUN_TEST(test_select_with_qualified_attribute);
 	return UNITY_END();
 }

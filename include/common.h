@@ -87,6 +87,21 @@ typedef struct
 	size_t prev_used; // used for arena_pop because arena_push aligns upwards
 } Arena;
 
+/*
+typedef struct
+{
+	TreeNode *parent;
+	TreeNode *left_child;
+	TreeNode *right_child;
+	// TODO: need to store the data
+} TreeNode;
+
+typedef struct
+{
+	TreeNode *root;
+} Tree;
+*/
+
 typedef struct
 {
 	int row;

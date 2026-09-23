@@ -14,7 +14,7 @@
  * Returns:
  *   None.
  */
-void parse(Parser* parser)
+void parse(Parser *parser, Arena *arena, size_t token_count)
 {
-	LOG("Hello from parser!");
+	
 }

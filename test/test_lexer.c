@@ -850,6 +850,163 @@ static void test_select_with_qualified_attribute(void)
 	run_test(src, strlen(src), 11, expected, false);
 }
 
+static void test_required_select_no_whitespace(void)
+{
+	const char *src = "select[x1=3](R)";
+	ExpectedToken expected[] = {
+		{WORD, "select", 6, {1, 1}},
+		{LBRACKET, "[", 1, {1, 7}},
+		{WORD, "x1", 2, {1, 8}},
+		{EQUAL, "=", 1, {1, 10}},
+		{NUMBER, "3", 1, {1, 11}},
+		{RBRACKET, "]", 1, {1, 12}},
+		{LPAREN, "(", 1, {1, 13}},
+		{WORD, "R", 1, {1, 14}},
+		{RPAREN, ")", 1, {1, 15}},
+	};
+
+	run_test(src, strlen(src), 9, expected, false);
+}
+
+static void test_required_select_with_whitespace(void)
+{
+	const char *src = "select[ x1 = 3 ](R)";
+	ExpectedToken expected[] = {
+		{WORD, "select", 6, {1, 1}},
+		{LBRACKET, "[", 1, {1, 7}},
+		{WORD, "x1", 2, {1, 9}},
+		{EQUAL, "=", 1, {1, 12}},
+		{NUMBER, "3", 1, {1, 14}},
+		{RBRACKET, "]", 1, {1, 16}},
+		{LPAREN, "(", 1, {1, 17}},
+		{WORD, "R", 1, {1, 18}},
+		{RPAREN, ")", 1, {1, 19}},
+	};
+
+	run_test(src, strlen(src), 9, expected, false);
+}
+
+static void test_required_greater_than_or_equal(void)
+{
+	const char *src = "select[Age>=30](R)";
+	ExpectedToken expected[] = {
+		{WORD, "select", 6, {1, 1}},
+		{LBRACKET, "[", 1, {1, 7}},
+		{WORD, "Age", 3, {1, 8}},
+		{GREATER_THAN_OR_EQUAL, ">=", 2, {1, 11}},
+		{NUMBER, "30", 2, {1, 13}},
+		{RBRACKET, "]", 1, {1, 15}},
+		{LPAREN, "(", 1, {1, 16}},
+		{WORD, "R", 1, {1, 17}},
+		{RPAREN, ")", 1, {1, 18}},
+	};
+
+	run_test(src, strlen(src), 9, expected, false);
+}
+
+static void test_required_greater_than_negative_number(void)
+{
+	const char *src = "select[Age>-30](R)";
+	ExpectedToken expected[] = {
+		{WORD, "select", 6, {1, 1}},
+		{LBRACKET, "[", 1, {1, 7}},
+		{WORD, "Age", 3, {1, 8}},
+		{GREATER_THAN, ">", 1, {1, 11}},
+		{NUMBER, "-30", 3, {1, 12}},
+		{RBRACKET, "]", 1, {1, 15}},
+		{LPAREN, "(", 1, {1, 16}},
+		{WORD, "R", 1, {1, 17}},
+		{RPAREN, ")", 1, {1, 18}},
+	};
+
+	run_test(src, strlen(src), 9, expected, false);
+}
+
+static void test_required_parenthesis_inside_string(void)
+{
+	const char *src = "select[Name='Bob)'](R)";
+	ExpectedToken expected[] = {
+		{WORD, "select", 6, {1, 1}},
+		{LBRACKET, "[", 1, {1, 7}},
+		{WORD, "Name", 4, {1, 8}},
+		{EQUAL, "=", 1, {1, 12}},
+		{STRING, "'Bob)'", 6, {1, 13}},
+		{RBRACKET, "]", 1, {1, 19}},
+		{LPAREN, "(", 1, {1, 20}},
+		{WORD, "R", 1, {1, 21}},
+		{RPAREN, ")", 1, {1, 22}},
+	};
+
+	run_test(src, strlen(src), 9, expected, false);
+}
+
+static void test_required_comma_inside_string(void)
+{
+	const char *src = "select[Name='a,b'](R)";
+	ExpectedToken expected[] = {
+		{WORD, "select", 6, {1, 1}},
+		{LBRACKET, "[", 1, {1, 7}},
+		{WORD, "Name", 4, {1, 8}},
+		{EQUAL, "=", 1, {1, 12}},
+		{STRING, "'a,b'", 5, {1, 13}},
+		{RBRACKET, "]", 1, {1, 18}},
+		{LPAREN, "(", 1, {1, 19}},
+		{WORD, "R", 1, {1, 20}},
+		{RPAREN, ")", 1, {1, 21}},
+	};
+
+	run_test(src, strlen(src), 9, expected, false);
+}
+
+static void test_required_doubled_quote(void)
+{
+	const char *src = "select[Name='O''Brien'](R)";
+	ExpectedToken expected[] = {
+		{WORD, "select", 6, {1, 1}},
+		{LBRACKET, "[", 1, {1, 7}},
+		{WORD, "Name", 4, {1, 8}},
+		{EQUAL, "=", 1, {1, 12}},
+		{STRING, "'O''Brien'", 10, {1, 13}},
+		{RBRACKET, "]", 1, {1, 23}},
+		{LPAREN, "(", 1, {1, 24}},
+		{WORD, "R", 1, {1, 25}},
+		{RPAREN, ")", 1, {1, 26}},
+	};
+
+	run_test(src, strlen(src), 9, expected, false);
+}
+
+static void test_required_keyword_as_attribute(void)
+{
+	const char *src = "select[union=3](R)";
+	ExpectedToken expected[] = {
+		{WORD, "select", 6, {1, 1}},
+		{LBRACKET, "[", 1, {1, 7}},
+		{WORD, "union", 5, {1, 8}},
+		{EQUAL, "=", 1, {1, 13}},
+		{NUMBER, "3", 1, {1, 14}},
+		{RBRACKET, "]", 1, {1, 15}},
+		{LPAREN, "(", 1, {1, 16}},
+		{WORD, "R", 1, {1, 17}},
+		{RPAREN, ")", 1, {1, 18}},
+	};
+
+	run_test(src, strlen(src), 9, expected, false);
+}
+
+static void test_required_unterminated_string(void)
+{
+	const char *src = "select[Name='Bob](R)";
+	ExpectedToken expected[] = {
+		{WORD, "select", 6, {1, 1}},
+		{LBRACKET, "[", 1, {1, 7}},
+		{WORD, "Name", 4, {1, 8}},
+		{EQUAL, "=", 1, {1, 12}},
+	};
+
+	run_test(src, strlen(src), 4, expected, true);
+}
+
 int main(void)
 {
 	UNITY_BEGIN();
@@ -912,5 +1069,14 @@ int main(void)
 	RUN_TEST(test_select_statement);
 	RUN_TEST(test_select_statement_with_string);
 	RUN_TEST(test_select_with_qualified_attribute);
+	RUN_TEST(test_required_select_no_whitespace);
+	RUN_TEST(test_required_select_with_whitespace);
+	RUN_TEST(test_required_greater_than_or_equal);
+	RUN_TEST(test_required_greater_than_negative_number);
+	RUN_TEST(test_required_parenthesis_inside_string);
+	RUN_TEST(test_required_comma_inside_string);
+	RUN_TEST(test_required_doubled_quote);
+	RUN_TEST(test_required_keyword_as_attribute);
+	RUN_TEST(test_required_unterminated_string);
 	return UNITY_END();
 }

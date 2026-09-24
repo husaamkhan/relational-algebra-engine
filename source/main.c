@@ -9,13 +9,15 @@ int main()
 	size_t count = 0;
 	lex(&lexer, &arena, &count);
 
-	if (lexer->has_error)
+	if (lexer.has_error)
 	{
 		LOG_ERR("Errors occured during lexing");
-		return;
+		return -1;
 	}
 
 	Parser parser;
 	Tree tree = tree_create();
 	parse(&parser, &arena, count);
+
+	return 0;
 }

@@ -41,10 +41,7 @@ void lexer_init(Lexer *lexer, const char *file_contents, size_t file_size)
  */
 bool peek(const Lexer *lexer, char *c)
 {
-	if (lexer->cur_pos >= (int)lexer->file_size)
-	{
-		return false;
-	}
+	if (lexer->cur_pos >= (int)lexer->file_size) return false;
 
 	*c = lexer->file_contents[lexer->cur_pos];
 	return true;
@@ -67,10 +64,7 @@ bool peek(const Lexer *lexer, char *c)
 bool advance(Lexer *lexer)
 {
 	char next_char;
-	if (!peek(lexer, &next_char))
-	{
-		return false;
-	}
+	if (!peek(lexer, &next_char)) return false;
 
 	lexer->cur_char = next_char;
 	lexer->cur_pos++;

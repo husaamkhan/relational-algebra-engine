@@ -1,10 +1,15 @@
 #pragma once
 
 #include "common.h"
+#include <stdbool.h>
 
 typedef struct
 {
-	/* TODO: add parser fields */
+	Arena *arena;
+	size_t token_count;
+
+	int cur_pos;
+	Token *cur_token;
 } Parser;
 
 /*

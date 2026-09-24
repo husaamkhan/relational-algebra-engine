@@ -81,29 +81,6 @@ static inline char *read_file(FILE *in, size_t *size_out)
 
 typedef struct
 {
-	char *base;
-	size_t used;
-	size_t capacity;
-	size_t prev_used; // used for arena_pop because arena_push aligns upwards
-} Arena;
-
-/*
-typedef struct
-{
-	TreeNode *parent;
-	TreeNode *left_child;
-	TreeNode *right_child;
-	char *data;
-} TreeNode;
-
-typedef struct
-{
-	TreeNode *root;
-} Tree;
-*/
-
-typedef struct
-{
 	int row;
 	int col;
 } FilePosition;
@@ -138,6 +115,28 @@ typedef struct
 	size_t          lexeme_length;
 	FilePosition    pos;
 } Token;
+
+typedef struct
+{
+	char *base;
+	size_t used;
+	size_t capacity;
+	size_t prev_used; // used for arena_pop because arena_push aligns upwards
+} Arena;
+
+typedef struct
+{
+	struct TreeNode *parent;
+	struct TreeNode *left_child;
+	struct TreeNode *right_child;
+	Token *tokens;
+} TreeNode;
+
+typedef struct
+{
+	TreeNode *root;
+} Tree;
+
 
 /* ==================================================
  * ARENA

@@ -1,6 +1,33 @@
 #include "common.h"
 #include "parser.h"
 
+void parser_init(Parser *parser, Arena *arena, size_t count)
+{
+	*parser = (Parser){
+		.arena = arena,
+		.token_count = count,
+		.cur_pos = 0
+	};
+}
+
+bool peek(Parser *parser, Token *t)
+{
+	if (parser->cur_pos >= parser->token_count) return false;
+
+	*t = *((Token *)parser->arena->base + parser->cur_pos + sizeof(Token));
+	return true;
+}
+
+bool advance(Parser *parser)
+{
+	Token *t;
+	if (!peek(parser, t)) return false;
+
+	parser->cur_pos += sizeof(Token);
+
+	return true;
+}
+
 /*
  * Parses the token stream into an AST.
  *
@@ -17,23 +44,14 @@
 // void parse(Parser *parser, Arena *arena, size_t token_count, Tree *tree)
 void parse(Parser *parser, Arena *arena, size_t token_count)
 {
-	/*
-	 * program is a statement, optionally followed by more statements
-	 * statement can be relation definition of query expression
-	 * parser starts by determining which statement it is and figure out what to do from there
-	 *
-	 * we can use a state machine to switch between different parser states, which lets the parser
-	 * switch between different expressinos that it is expecting/are valid given the current statement
-	 * being parsed
-	 * */	
-
 	for (size_t i; i <= token_count; i++)
 	{
-		if (token->category != WORD)
-		{
-			printf("print an error here");
-		}
+		advance(parser);
 
-		i
+		// Expect query-expression
+		if (parser->cur_token->category == LPAREN)
+		{
+			LOG("asdf");
+		}
 	}
 }

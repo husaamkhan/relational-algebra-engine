@@ -5,13 +5,13 @@
 
 typedef struct
 {
-	Arena *arena;
-	size_t token_count;
+	Arena *token_arena;
+	Arena *tree_arena;
 
-	int cur_pos;
+	size_t token_count;
+	size_t cur_pos;
 	Token *cur_token;
 } Parser;
-
 /*
  * Parses the token stream into an AST.
  *
@@ -25,5 +25,4 @@ typedef struct
  * Returns:
  *   None.
  */
-//void parse(Parser *parser, Arena *arena, size_t token_count, Tree *tree);
-void parse(Parser *parser, Arena *arena, size_t token_count);
+void parse(Parser *parser, Arena *arena, size_t token_count, Tree *tree);

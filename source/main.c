@@ -16,7 +16,7 @@ int main()
 	}
 
 	Parser parser;
-	Tree tree = tree_create();
+	Tree tree = (Tree){ .root = NULL };
 	parse(&parser, &arena, count);
 
 	return 0;

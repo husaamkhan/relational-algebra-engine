@@ -124,19 +124,20 @@ typedef struct
 	size_t prev_used; // used for arena_pop because arena_push aligns upwards
 } Arena;
 
-typedef struct
+typedef struct TreeNode
 {
 	struct TreeNode *parent;
 	struct TreeNode *left_child;
 	struct TreeNode *right_child;
+
 	Token *tokens;
+	size_t token_count;
 } TreeNode;
 
 typedef struct
 {
 	TreeNode *root;
 } Tree;
-
 
 /* ==================================================
  * ARENA
@@ -265,3 +266,38 @@ static inline void arena_pop(Arena *arena)
 }
 
 #define token_new(arena) ((Token *)arena_push((arena), sizeof(Token), _Alignof(Token)))
+
+
+/* ==================================================
+ * TREE
+ * ================================================== */
+
+static inline Tree *tree_create(Arena *arena)
+{
+	Tree *tree = arena_push(arena, sizeof(Tree), _Alignof(Tree));
+
+	*tree = (Tree){
+		.root = NULL
+	};
+
+	return tree;
+}
+
+static inline TreeNode *tree_node_create(
+	Arena *arena,
+	Token *tokens,
+	size_t token_count
+)
+{
+	TreeNode *node = arena_push(arena, sizeof(TreeNode), _Alignof(TreeNode));
+
+	*node = (TreeNode){
+		.parent = NULL,
+		.left_child = NULL,
+		.right_child = NULL,
+		.tokens = tokens,
+		.token_count = token_count
+	};
+
+	return node;
+}

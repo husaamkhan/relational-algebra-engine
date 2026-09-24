@@ -1,29 +1,37 @@
 #include "common.h"
 #include "parser.h"
 
-void parser_init(Parser *parser, Arena *arena, size_t count)
+void parser_init( Parser *parser, Arena *token_arena, Arena *tree_arena, size_t token_count)
 {
 	*parser = (Parser){
-		.arena = arena,
-		.token_count = count,
-		.cur_pos = 0
+		.token_arena = token_arena,
+		.tree_arena = tree_arena,
+		.token_count = token_count,
+		.cur_pos = 0,
+		.cur_token = NULL
 	};
 }
 
-bool peek(Parser *parser, Token *t)
+bool peek(Parser *parser, Token *token)
 {
-	if (parser->cur_pos >= parser->token_count) return false;
+	if (parser->cur_pos >= parser->token_count)
+		return false;
 
-	*t = *((Token *)parser->arena->base + parser->cur_pos + sizeof(Token));
+	*token = *(Token *)(parser->token_arena->base +
+		parser->cur_pos * sizeof(Token));
+
 	return true;
 }
 
 bool advance(Parser *parser)
 {
-	Token *t;
-	if (!peek(parser, t)) return false;
+	if (parser->cur_pos >= parser->token_count)
+		return false;
 
-	parser->cur_pos += sizeof(Token);
+	parser->cur_token = (Token *)(parser->token_arena->base +
+		parser->cur_pos * sizeof(Token));
+
+	parser->cur_pos++;
 
 	return true;
 }

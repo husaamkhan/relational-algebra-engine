@@ -130,7 +130,7 @@ typedef struct TreeNode
 	struct TreeNode *left_child;
 	struct TreeNode *right_child;
 
-	Token *tokens;
+	Token **token_arr;
 	size_t token_count;
 } TreeNode;
 
@@ -206,7 +206,6 @@ static inline void arena_destroy(Arena *arena)
 	arena->prev_used = 0;
 }
 
-
 /*
  * Allocates memory from an arena.
  *
@@ -267,7 +266,6 @@ static inline void arena_pop(Arena *arena)
 
 #define token_new(arena) ((Token *)arena_push((arena), sizeof(Token), _Alignof(Token)))
 
-
 /* ==================================================
  * TREE
  * ================================================== */
@@ -301,3 +299,4 @@ static inline TreeNode *tree_node_create(
 
 	return node;
 }
+

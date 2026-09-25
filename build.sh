@@ -18,9 +18,13 @@ if [ "$1" = "debug" ]; then
 elif [ "$1" = "test" ]; then
     includes="-Iinclude -Itest/Unity/src"
     flags="-g -O0"
-    bin="bin/test_lexer"
-    sources="$sources test/Unity/src/unity.c test/test_lexer.c"
-    run=1
+    common="source/lexer.c source/parser.c test/Unity/src/unity.c"
+    mkdir -p bin
+    $compiler $flags $includes $common test/test_lexer.c  -o bin/test_lexer  || exit 1
+    $compiler $flags $includes $common test/test_parser.c -o bin/test_parser || exit 1
+    bin/test_lexer
+    bin/test_parser
+    exit 0
 elif [ -z "$1" ]; then
     sources="$sources source/main.c"
 else

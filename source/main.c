@@ -5,9 +5,10 @@
 int main()
 {
 	Lexer lexer;
-	Arena arena = arena_create(1024);
-	size_t count = 0;
-	lex(&lexer, &arena, &count);
+	Arena token_arena = arena_create(1024);
+	size_t token_count = 0;
+
+	lex(&lexer, &token_arena, &token_count);
 
 	if (lexer.has_error)
 	{
@@ -15,9 +16,13 @@ int main()
 		return -1;
 	}
 
-	Parser parser;
 	Tree tree = (Tree){ .root = NULL };
-	parse(&parser, &arena, count);
+	Arena tree_node_arena = arena_create(1024);
+
+	Parser parser;
+	parser_init(Parser *parser, Arena *token_arena, Arena *tree_node_arena, size_t token_count);
+
+	parse(&parser, &tree);
 
 	return 0;
 }

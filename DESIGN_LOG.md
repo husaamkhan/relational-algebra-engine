@@ -60,3 +60,6 @@
 ## September 23
 -   Realized I forgot to add comment handling to lexer.
 -   Beginning work on parser, not much progress, just basic setup, learning, and design
+
+## September 24
+-   No work done today

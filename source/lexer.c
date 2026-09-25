@@ -39,7 +39,7 @@ void lexer_init(Lexer *lexer, const char *file_contents, size_t file_size)
  * Returns:
  *   true if a character was peeked, false if at EOF.
  */
-bool peek(const Lexer *lexer, char *c)
+static bool peek(const Lexer *lexer, char *c)
 {
 	if (lexer->cur_pos >= (int)lexer->file_size) return false;
 
@@ -61,7 +61,7 @@ bool peek(const Lexer *lexer, char *c)
  * Returns:
  *   true if a character was consumed, false if at EOF.
  */
-bool advance(Lexer *lexer)
+static bool advance(Lexer *lexer)
 {
 	char next_char;
 	if (!peek(lexer, &next_char)) return false;

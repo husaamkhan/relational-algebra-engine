@@ -84,7 +84,7 @@ void test_parse_simple_relation(void)
 	bool has_error = false;
 	Tree tree = parse_source("selection", &has_error);
 
-	TEST_ASSERT_FALSE(has_error);
+TEST_ASSERT_FALSE(has_error);
 	TEST_ASSERT_NOT_NULL(tree.head);
 	TEST_ASSERT_NOT_NULL(tree.head->root);
 	TEST_ASSERT_EQUAL_size_t(1, tree.head->root->token_count);
@@ -946,6 +946,112 @@ void test_parse_join_dangling_condition_operator(void)
 	TEST_ASSERT_TRUE(has_error);
 }
 
+void test_parse_binary_left_associativity(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source("R union S union T", &has_error);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode r = { .category = IDENT, .lexemes = {"R"}, .token_count = 1 };
+	ExpectedNode s = { .category = IDENT, .lexemes = {"S"}, .token_count = 1 };
+	ExpectedNode t = { .category = IDENT, .lexemes = {"T"}, .token_count = 1 };
+
+	ExpectedNode union_rs = {
+		.category = UNION, .lexemes = {"union"}, .token_count = 1,
+		.left = &r, .right = &s
+	};
+
+	ExpectedNode root = {
+		.category = UNION, .lexemes = {"union"}, .token_count = 1,
+		.left = &union_rs, .right = &t
+	};
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_binary_precedence(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source("R union S times T", &has_error);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode r = { .category = IDENT, .lexemes = {"R"}, .token_count = 1 };
+	ExpectedNode s = { .category = IDENT, .lexemes = {"S"}, .token_count = 1 };
+	ExpectedNode t = { .category = IDENT, .lexemes = {"T"}, .token_count = 1 };
+
+	ExpectedNode times = {
+		.category = TIMES, .lexemes = {"times"}, .token_count = 1,
+		.left = &s, .right = &t
+	};
+
+	ExpectedNode root = {
+		.category = UNION, .lexemes = {"union"}, .token_count = 1,
+		.left = &r, .right = &times
+	};
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_unary_binary_precedence(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source("select[A=1](R) union S", &has_error);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode a = { .category = IDENT, .lexemes = {"A"}, .token_count = 1 };
+	ExpectedNode one = { .category = NUMBER, .lexemes = {"1"}, .token_count = 1 };
+
+	ExpectedNode condition = {
+		.category = EQUAL, .lexemes = {"="}, .token_count = 1,
+		.left = &a, .right = &one
+	};
+
+	ExpectedNode r = { .category = IDENT, .lexemes = {"R"}, .token_count = 1 };
+
+	ExpectedNode select = {
+		.category = SELECT, .lexemes = {"select"}, .token_count = 1,
+		.left = &condition, .right = &r
+	};
+
+	ExpectedNode s = { .category = IDENT, .lexemes = {"S"}, .token_count = 1 };
+
+	ExpectedNode root = {
+		.category = UNION, .lexemes = {"union"}, .token_count = 1,
+		.left = &select, .right = &s
+	};
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_parentheses_override_precedence(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source("(R union S) times T", &has_error);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode r = { .category = IDENT, .lexemes = {"R"}, .token_count = 1 };
+	ExpectedNode s = { .category = IDENT, .lexemes = {"S"}, .token_count = 1 };
+	ExpectedNode t = { .category = IDENT, .lexemes = {"T"}, .token_count = 1 };
+
+	ExpectedNode union_rs = {
+		.category = UNION, .lexemes = {"union"}, .token_count = 1,
+		.left = &r, .right = &s
+	};
+
+	ExpectedNode root = {
+		.category = TIMES, .lexemes = {"times"}, .token_count = 1,
+		.left = &union_rs, .right = &t
+	};
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+
+
 int main(void)
 {
 	UNITY_BEGIN();
@@ -1000,5 +1106,9 @@ int main(void)
 	RUN_TEST(test_parse_join_missing_closing_bracket);
 	RUN_TEST(test_parse_join_missing_right_expression);
 	RUN_TEST(test_parse_join_dangling_condition_operator);
+	RUN_TEST(test_parse_binary_left_associativity);
+	RUN_TEST(test_parse_binary_precedence);
+	RUN_TEST(test_parse_unary_binary_precedence);
+	RUN_TEST(test_parse_parentheses_override_precedence);
 	return UNITY_END();
 }

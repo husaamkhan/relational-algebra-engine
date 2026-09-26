@@ -3,6 +3,15 @@
 #include "lexer.h"
 #include "parser.h"
 
+typedef struct ExpectedNode
+{
+	Category category;
+	const char *lexemes[8];
+	size_t token_count;
+	const struct ExpectedNode *left;
+	const struct ExpectedNode *right;
+} ExpectedNode;
+
 static Tree parse_source(const char *src, bool *has_error_out)
 {
 	Lexer lexer;
@@ -38,15 +47,6 @@ static void assert_token_lexeme(Token *token, const char *expected)
 	TEST_ASSERT_EQUAL_size_t(strlen(expected), token->lexeme_length);
 	TEST_ASSERT_EQUAL_INT(0, strncmp(token->lexeme_start, expected, token->lexeme_length));
 }
-
-typedef struct ExpectedNode
-{
-	Category category;
-	const char *lexemes[2];
-	size_t token_count;
-	const struct ExpectedNode *left;
-	const struct ExpectedNode *right;
-} ExpectedNode;
 
 static void assert_tree_node(const TreeNode *actual, const ExpectedNode *expected)
 {
@@ -391,6 +391,561 @@ void test_parse_select_error_then_next_statement_recovers(void)
 	TEST_ASSERT_EQUAL_INT(IDENT, tree.head->next->root->token_arr[0]->category);
 }
 
+void test_parse_project_single_attribute(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source("project[A](R)", &has_error);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode r      = { .category = IDENT,   .lexemes = {"R"},       .token_count = 1 };
+	ExpectedNode attr   = { .category = IDENT,   .lexemes = {"A"},       .token_count = 1 };
+	ExpectedNode root   = { .category = PROJECT, .lexemes = {"project"}, .token_count = 1,
+	                        .left = &attr, .right = &r };
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_project_multiple_attributes(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source("project[A,B,C](R)", &has_error);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode r      = { .category = IDENT,   .lexemes = {"R"},             .token_count = 1 };
+	ExpectedNode attrs  = { .category = IDENT,   .lexemes = {"A", "B", "C"},  .token_count = 3 };
+	ExpectedNode root   = { .category = PROJECT, .lexemes = {"project"},       .token_count = 1,
+	                        .left = &attrs, .right = &r };
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_project_keyword_as_attribute(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source("project[union](R)", &has_error);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode r      = { .category = IDENT,   .lexemes = {"R"},       .token_count = 1 };
+	ExpectedNode attr   = { .category = IDENT,   .lexemes = {"union"},   .token_count = 1 };
+	ExpectedNode root   = { .category = PROJECT, .lexemes = {"project"}, .token_count = 1,
+	                        .left = &attr, .right = &r };
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_rename(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source("rename[B](R)", &has_error);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode r      = { .category = IDENT,  .lexemes = {"R"},      .token_count = 1 };
+	ExpectedNode name   = { .category = IDENT,  .lexemes = {"B"},      .token_count = 1 };
+	ExpectedNode root   = { .category = RENAME, .lexemes = {"rename"}, .token_count = 1,
+	                        .left = &name, .right = &r };
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_project_nested_select(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source("project[A,B](select[Age>30](R))", &has_error);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode r       = { .category = IDENT,        .lexemes = {"R"},       .token_count = 1 };
+	ExpectedNode age     = { .category = IDENT,        .lexemes = {"Age"},     .token_count = 1 };
+	ExpectedNode num30   = { .category = NUMBER,       .lexemes = {"30"},      .token_count = 1 };
+	ExpectedNode cmp     = { .category = GREATER_THAN, .lexemes = {">"},       .token_count = 1,
+	                         .left = &age, .right = &num30 };
+	ExpectedNode select  = { .category = SELECT,       .lexemes = {"select"},  .token_count = 1,
+	                         .left = &cmp, .right = &r };
+	ExpectedNode attrs   = { .category = IDENT,        .lexemes = {"A", "B"},  .token_count = 2 };
+	ExpectedNode root    = { .category = PROJECT,      .lexemes = {"project"}, .token_count = 1,
+	                         .left = &attrs, .right = &select };
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_rename_nested_project(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source("rename[Employees](project[A](R))", &has_error);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode r       = { .category = IDENT,   .lexemes = {"R"},         .token_count = 1 };
+	ExpectedNode attr    = { .category = IDENT,   .lexemes = {"A"},         .token_count = 1 };
+	ExpectedNode project = { .category = PROJECT, .lexemes = {"project"},   .token_count = 1,
+	                         .left = &attr, .right = &r };
+	ExpectedNode name    = { .category = IDENT,   .lexemes = {"Employees"}, .token_count = 1 };
+	ExpectedNode root    = { .category = RENAME,  .lexemes = {"rename"},    .token_count = 1,
+	                         .left = &name, .right = &project };
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_project_missing_bracket(void)
+{
+	bool has_error = false;
+	parse_source("project(A)", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_project_empty_attribute_list(void)
+{
+	bool has_error = false;
+	parse_source("project[](R)", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_project_missing_attribute_after_comma(void)
+{
+	bool has_error = false;
+	parse_source("project[A,](R)", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_project_missing_closing_bracket(void)
+{
+	bool has_error = false;
+	parse_source("project[A(R)", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_project_missing_parenthesis(void)
+{
+	bool has_error = false;
+	parse_source("project[A]R", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_project_missing_closing_parenthesis(void)
+{
+	bool has_error = false;
+	parse_source("project[A](R", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_rename_missing_bracket(void)
+{
+	bool has_error = false;
+	parse_source("rename(R)", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_rename_empty_identifier(void)
+{
+	bool has_error = false;
+	parse_source("rename[](R)", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_rename_missing_closing_bracket(void)
+{
+	bool has_error = false;
+	parse_source("rename[A(R)", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_rename_missing_parenthesis(void)
+{
+	bool has_error = false;
+	parse_source("rename[A]R", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_rename_missing_closing_parenthesis(void)
+{
+	bool has_error = false;
+	parse_source("rename[A](R", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_union(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source("R union S", &has_error);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode r = {
+		.category = IDENT,
+		.lexemes = {"R"},
+		.token_count = 1
+	};
+
+	ExpectedNode s = {
+		.category = IDENT,
+		.lexemes = {"S"},
+		.token_count = 1
+	};
+
+	ExpectedNode root = {
+		.category = UNION,
+		.lexemes = {"union"},
+		.token_count = 1,
+		.left = &r,
+		.right = &s
+	};
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_intersect(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source("R intersect S", &has_error);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode r = {
+		.category = IDENT,
+		.lexemes = {"R"},
+		.token_count = 1
+	};
+
+	ExpectedNode s = {
+		.category = IDENT,
+		.lexemes = {"S"},
+		.token_count = 1
+	};
+
+	ExpectedNode root = {
+		.category = INTERSECT,
+		.lexemes = {"intersect"},
+		.token_count = 1,
+		.left = &r,
+		.right = &s
+	};
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_minus(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source("R minus S", &has_error);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode r = {
+		.category = IDENT,
+		.lexemes = {"R"},
+		.token_count = 1
+	};
+
+	ExpectedNode s = {
+		.category = IDENT,
+		.lexemes = {"S"},
+		.token_count = 1
+	};
+
+	ExpectedNode root = {
+		.category = MINUS,
+		.lexemes = {"minus"},
+		.token_count = 1,
+		.left = &r,
+		.right = &s
+	};
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_times(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source("R times S", &has_error);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode r = {
+		.category = IDENT,
+		.lexemes = {"R"},
+		.token_count = 1
+	};
+
+	ExpectedNode s = {
+		.category = IDENT,
+		.lexemes = {"S"},
+		.token_count = 1
+	};
+
+	ExpectedNode root = {
+		.category = TIMES,
+		.lexemes = {"times"},
+		.token_count = 1,
+		.left = &r,
+		.right = &s
+	};
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_join(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source("R join[A=B] S", &has_error);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode r = {
+		.category = IDENT,
+		.lexemes = {"R"},
+		.token_count = 1
+	};
+
+	ExpectedNode s = {
+		.category = IDENT,
+		.lexemes = {"S"},
+		.token_count = 1
+	};
+
+	ExpectedNode relations = {
+		.category = JOIN_RELATIONS,
+		.token_count = 1,
+		.lexemes = {"JOIN_RELATIONS"},
+		.left = &r,
+		.right = &s
+	};
+
+	ExpectedNode a = {
+		.category = IDENT,
+		.lexemes = {"A"},
+		.token_count = 1
+	};
+
+	ExpectedNode b = {
+		.category = IDENT,
+		.lexemes = {"B"},
+		.token_count = 1
+	};
+
+	ExpectedNode condition = {
+		.category = EQUAL,
+		.lexemes = {"="},
+		.token_count = 1,
+		.left = &a,
+		.right = &b
+	};
+
+	ExpectedNode root = {
+		.category = JOIN,
+		.lexemes = {"join"},
+		.token_count = 1,
+		.left = &relations,
+		.right = &condition
+	};
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_join_complex_condition(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source(
+		"R join[A=B and C>10] S",
+		&has_error
+	);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode r = {
+		.category = IDENT,
+		.lexemes = {"R"},
+		.token_count = 1
+	};
+
+	ExpectedNode s = {
+		.category = IDENT,
+		.lexemes = {"S"},
+		.token_count = 1
+	};
+
+	ExpectedNode relations = {
+		.category = JOIN_RELATIONS,
+		.lexemes = {"JOIN_RELATIONS"},
+		.token_count = 1,
+		.left = &r,
+		.right = &s
+	};
+
+	ExpectedNode a = {
+		.category = IDENT,
+		.lexemes = {"A"},
+		.token_count = 1
+	};
+
+	ExpectedNode b = {
+		.category = IDENT,
+		.lexemes = {"B"},
+		.token_count = 1
+	};
+
+	ExpectedNode c = {
+		.category = IDENT,
+		.lexemes = {"C"},
+		.token_count = 1
+	};
+
+	ExpectedNode ten = {
+		.category = NUMBER,
+		.lexemes = {"10"},
+		.token_count = 1
+	};
+
+	ExpectedNode equal = {
+		.category = EQUAL,
+		.lexemes = {"="},
+		.token_count = 1,
+		.left = &a,
+		.right = &b
+	};
+
+	ExpectedNode greater = {
+		.category = GREATER_THAN,
+		.lexemes = {">"},
+		.token_count = 1,
+		.left = &c,
+		.right = &ten
+	};
+
+	ExpectedNode and = {
+		.category = AND,
+		.lexemes = {"and"},
+		.token_count = 1,
+		.left = &equal,
+		.right = &greater
+	};
+
+	ExpectedNode root = {
+		.category = JOIN,
+		.lexemes = {"join"},
+		.token_count = 1,
+		.left = &relations,
+		.right = &and
+	};
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_join_qualified_attributes(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source(
+		"R join[R.id=S.id] S",
+		&has_error
+	);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode r = {
+		.category = IDENT,
+		.lexemes = {"R"},
+		.token_count = 1
+	};
+
+	ExpectedNode s = {
+		.category = IDENT,
+		.lexemes = {"S"},
+		.token_count = 1
+	};
+
+	ExpectedNode relations = {
+		.category = JOIN_RELATIONS,
+		.lexemes = {"JOIN_RELATIONS"},
+		.token_count = 1,
+		.left = &r,
+		.right = &s
+	};
+
+	ExpectedNode left_attr = {
+		.category = IDENT,
+		.lexemes = {"R", "id"},
+		.token_count = 2
+	};
+
+	ExpectedNode right_attr = {
+		.category = IDENT,
+		.lexemes = {"S", "id"},
+		.token_count = 2
+	};
+
+	ExpectedNode condition = {
+		.category = EQUAL,
+		.lexemes = {"="},
+		.token_count = 1,
+		.left = &left_attr,
+		.right = &right_attr
+	};
+
+	ExpectedNode root = {
+		.category = JOIN,
+		.lexemes = {"join"},
+		.token_count = 1,
+		.left = &relations,
+		.right = &condition
+	};
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_join_missing_bracket(void)
+{
+	bool has_error = false;
+	parse_source("R join A=B] S", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_join_empty_condition(void)
+{
+	bool has_error = false;
+	parse_source("R join[] S", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_join_missing_closing_bracket(void)
+{
+	bool has_error = false;
+	parse_source("R join[A=B S", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_join_missing_right_expression(void)
+{
+	bool has_error = false;
+	parse_source("R join[A=B]", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_join_dangling_condition_operator(void)
+{
+	bool has_error = false;
+	parse_source("R join[A=] S", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
 int main(void)
 {
 	UNITY_BEGIN();
@@ -416,5 +971,34 @@ int main(void)
 	RUN_TEST(test_parse_select_condition_unclosed_paren);
 	RUN_TEST(test_parse_select_condition_dangling_not);
 	RUN_TEST(test_parse_select_error_then_next_statement_recovers);
+	RUN_TEST(test_parse_project_single_attribute);
+	RUN_TEST(test_parse_project_multiple_attributes);
+	RUN_TEST(test_parse_project_keyword_as_attribute);
+	RUN_TEST(test_parse_rename);
+	RUN_TEST(test_parse_project_nested_select);
+	RUN_TEST(test_parse_rename_nested_project);
+	RUN_TEST(test_parse_project_missing_bracket);
+	RUN_TEST(test_parse_project_empty_attribute_list);
+	RUN_TEST(test_parse_project_missing_attribute_after_comma);
+	RUN_TEST(test_parse_project_missing_closing_bracket);
+	RUN_TEST(test_parse_project_missing_parenthesis);
+	RUN_TEST(test_parse_project_missing_closing_parenthesis);
+	RUN_TEST(test_parse_rename_missing_bracket);
+	RUN_TEST(test_parse_rename_empty_identifier);
+	RUN_TEST(test_parse_rename_missing_closing_bracket);
+	RUN_TEST(test_parse_rename_missing_parenthesis);
+	RUN_TEST(test_parse_rename_missing_closing_parenthesis);
+	RUN_TEST(test_parse_union);
+	RUN_TEST(test_parse_intersect);
+	RUN_TEST(test_parse_minus);
+	RUN_TEST(test_parse_times);
+	RUN_TEST(test_parse_join);
+	RUN_TEST(test_parse_join_complex_condition);
+	RUN_TEST(test_parse_join_qualified_attributes);
+	RUN_TEST(test_parse_join_missing_bracket);
+	RUN_TEST(test_parse_join_empty_condition);
+	RUN_TEST(test_parse_join_missing_closing_bracket);
+	RUN_TEST(test_parse_join_missing_right_expression);
+	RUN_TEST(test_parse_join_dangling_condition_operator);
 	return UNITY_END();
 }

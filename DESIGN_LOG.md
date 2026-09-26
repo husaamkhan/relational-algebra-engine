@@ -70,6 +70,17 @@
 
 ## September 26
 -   Added tree printing function to parser
--   Working on adding query-expression parsing, including condition, relation, etc.
 -   Realized that my tree design only works for single statements. So i will modify it to contain the whole program, which will be
     done by storing a list of smaller tree root nodes, one for each statement
+-   Working on implementation for query-expressions. Running into issues with join. This one is hard to represent with a tree in which
+    each node has only left and right children. Statements such as R join[A=B] S become a bit awkward to work with because so far the
+    tree design assumed there'd be only 2 child nodes, but this statement has join, and then 3 other possible nodes neighbouring join.
+    -   Solution that I'm going with is that join will have a special token called JOIN_RELATION, which will then have R and S as children.
+        The tree would look something like this:
+```
+             join
+            /    \
+ JOIN_RELATIONS    =
+    /    \        / \
+   R      S      A   B
+```

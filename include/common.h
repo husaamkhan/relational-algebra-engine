@@ -117,7 +117,8 @@ typedef enum
 	AND,
 	OR,
 	NOT,
-	IDENT
+	IDENT,
+	JOIN_RELATIONS
 } Category;
 
 typedef struct

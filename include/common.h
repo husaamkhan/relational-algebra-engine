@@ -114,11 +114,11 @@ typedef enum
 	MINUS,
 	TIMES,
 	JOIN,
+	JOIN_RELATIONS,
 	AND,
 	OR,
 	NOT,
-	IDENT,
-	JOIN_RELATIONS
+	IDENT
 } Category;
 
 typedef struct

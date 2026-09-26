@@ -4,6 +4,7 @@
 
 static TreeNode *parse_condition(Parser *parser);
 static TreeNode *parse_additive_expression(Parser *parser);
+static TreeNode *parse_join(Parser *parser, TreeNode *left);
 
 static Token *peek(Parser *parser)
 {
@@ -541,6 +542,106 @@ static TreeNode *parse_unary_expression(Parser *parser)
 	return parse_atom_expression(parser);
 }
 
+static TreeNode *parse_join(Parser *parser, TreeNode *left)
+{
+	Token *join_token = advance(parser);
+	join_token->category = JOIN;
+
+	if (!check(parser, LBRACKET))
+	{
+		Token *token = peek(parser);
+
+		if (token == NULL)
+		{
+			SYNTAX_ERR("Incomplete join expression at end of input: expected '[' condition ']' and right relation expression");
+		}
+		else
+		{
+			SYNTAX_ERR("Expected '[' after 'join' at %d:%d",
+			           token->pos.row,
+			           token->pos.col);
+		}
+
+		parser->has_error = true;
+		return NULL;
+	}
+
+	advance(parser); /* '[' */
+
+	TreeNode *condition = parse_condition(parser);
+
+	if (condition == NULL)
+	{
+		return NULL;
+	}
+
+	if (!check(parser, RBRACKET))
+	{
+		Token *token = peek(parser);
+
+		if (token == NULL)
+		{
+			SYNTAX_ERR("Incomplete join expression at end of input: expected ']' and right relation expression");
+		}
+		else
+		{
+			SYNTAX_ERR("Expected ']' after join condition at %d:%d (got '%.*s')",
+			           token->pos.row,
+			           token->pos.col,
+			           (int)token->lexeme_length,
+			           token->lexeme_start);
+		}
+
+		parser->has_error = true;
+		return NULL;
+	}
+
+	advance(parser); /* ']' */
+
+	TreeNode *right = parse_unary_expression(parser);
+
+	if (right == NULL)
+	{
+		return NULL;
+	}
+
+	Token *relations_token = token_new(parser->node_arena);
+	*relations_token = (Token){
+		.category = JOIN_RELATIONS,
+		.lexeme_start = "JOIN_RELATIONS",
+		.lexeme_length = 14,
+		.pos = {0, 0}
+	};
+
+	TreeNode *relations = tree_node_create(
+		parser->node_arena,
+		1,
+		NULL,
+		left,
+		right
+	);
+
+	relations->token_arr[0] = relations_token;
+
+	TreeNode *node = tree_node_create(
+		parser->node_arena,
+		1,
+		NULL,
+		relations,
+		condition
+	);
+
+	node->token_arr[0] = join_token;
+
+	left->parent = relations;
+	right->parent = relations;
+
+	relations->parent = node;
+	condition->parent = node;
+
+	return node;
+}
+
 static TreeNode *parse_multiplicative_expression(Parser *parser)
 {
 	TreeNode *left = parse_unary_expression(parser);
@@ -550,36 +651,51 @@ static TreeNode *parse_multiplicative_expression(Parser *parser)
 		return NULL;
 	}
 
-	while (check(parser, WORD) &&
-	       parser->cur_token->lexeme_length == 5 &&
-	       strncmp(parser->cur_token->lexeme_start, "times", 5) == 0)
+	while (check(parser, WORD))
 	{
-		Token *operator_token = advance(parser);
-		operator_token->category = TIMES;
-
-		TreeNode *right = parse_unary_expression(parser);
-
-		if (right == NULL)
+		if (parser->cur_token->lexeme_length == 5 &&
+		    strncmp(parser->cur_token->lexeme_start, "times", 5) == 0)
 		{
-			return NULL;
+			Token *operator_token = advance(parser);
+			operator_token->category = TIMES;
+
+			TreeNode *right = parse_unary_expression(parser);
+
+			if (right == NULL)
+			{
+				return NULL;
+			}
+
+			TreeNode *node = tree_node_create(
+				parser->node_arena,
+				1,
+				NULL,
+				left,
+				right
+			);
+
+			node->token_arr[0] = operator_token;
+
+			left->parent = node;
+			right->parent = node;
+
+			left = node;
 		}
+		else if (parser->cur_token->lexeme_length == 4 &&
+			 strncmp(parser->cur_token->lexeme_start, "join", 4) == 0)
+		{
+			left = parse_join(parser, left);
 
-		TreeNode *node = tree_node_create(
-			parser->node_arena,
-			1,
-			NULL,
-			left,
-			right
-		);
-
-		node->token_arr[0] = operator_token;
-
-		left->parent = node;
-		right->parent = node;
-
-		left = node;
+			if (left == NULL)
+			{
+				return NULL;
+			}
+		}
+		else
+		{
+			break;
+		}
 	}
-
 	return left;
 }
 

@@ -2,9 +2,8 @@
 
 #include <stdbool.h>
 #include "common.h"
-#include <stdbool.h>
 
-#define PARSE_ERR(fmt, ...) LOG_ERR("[PARSE] " fmt, ##__VA_ARGS__)
+#define SYNTAX_ERR(fmt, ...) LOG_ERR("[SYNTAX] " fmt, ##__VA_ARGS__)
 
 typedef struct
 {
@@ -15,6 +14,8 @@ typedef struct
 	size_t cur_pos;
 
 	Arena *node_arena;
+
+	bool has_error;
 } Parser;
 
 void parser_init(Parser *parser, Arena *token_arena, size_t token_count, Arena *node_arena);
@@ -27,11 +28,12 @@ void parser_init(Parser *parser, Arena *token_arena, size_t token_count, Arena *
  *   tree   - Tree whose root will be set to the parsed AST root.
  *
  * Output:
- *   tree->root is set to the root TreeNode of the parsed AST.
- *   parser->has_error is set to true if any parse errors occurred.
- *   Errors are reported via LOG_ERR.
+ *   tree->head/tree->tail are populated with one StatementNode per
+ *   parsed statement. parser->has_error is set to true if any parse
+ *   errors occurred. Errors are reported via LOG_ERR.
  *
  * Returns:
  *   None.
  */
 void parse(Parser *parser, Tree *tree);
+void print_tree(const Tree *tree);

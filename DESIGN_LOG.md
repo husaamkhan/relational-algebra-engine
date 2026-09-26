@@ -67,3 +67,9 @@
 ## September 25
 -   Modifications to the tree and parser setup, and also getting unit tests for parser setup.
 -   Add logic to parser to add identifiers to AST
+
+## September 26
+-   Added tree printing function to parser
+-   Working on adding query-expression parsing, including condition, relation, etc.
+-   Realized that my tree design only works for single statements. So i will modify it to contain the whole program, which will be
+    done by storing a list of smaller tree root nodes, one for each statement

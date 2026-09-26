@@ -146,11 +146,17 @@ typedef struct TreeNode
 	size_t token_count;
 } TreeNode;
 
-typedef struct
+typedef struct StatementNode
 {
 	TreeNode *root;
-} Tree;
+	struct StatementNode *next;
+} StatementNode;
 
+typedef struct
+{
+	StatementNode *head;
+	StatementNode *tail;
+} Tree;
 /* ==================================================
  * ARENA
  * ================================================== */
@@ -281,17 +287,6 @@ static inline void arena_pop(Arena *arena)
 /* ==================================================
  * TREE
  * ================================================== */
-
-static inline Tree *tree_create(Arena *arena)
-{
-	Tree *tree = arena_push(arena, sizeof(Tree), _Alignof(Tree));
-
-	*tree = (Tree){
-		.root = NULL
-	};
-
-	return tree;
-}
 
 static inline TreeNode *tree_node_create(Arena *arena, size_t token_count, TreeNode *parent, TreeNode *left_child, TreeNode *right_child)
 {

@@ -104,8 +104,20 @@ typedef enum
 	NUMBER,
 	STRING,
 	WORD,
-	NEWLINE, // TODO: why do we need this?
-	COMMENT
+	NEWLINE,
+	COMMENT,
+	SELECT,
+	PROJECT,
+	RENAME,
+	UNION,
+	INTERSECT,
+	MINUS,
+	TIMES,
+	JOIN,
+	AND,
+	OR,
+	NOT,
+	IDENT
 } Category;
 
 typedef struct
@@ -281,22 +293,23 @@ static inline Tree *tree_create(Arena *arena)
 	return tree;
 }
 
-static inline TreeNode *tree_node_create(
-	Arena *arena,
-	Token *token_arr,
-	size_t token_count
-)
+static inline TreeNode *tree_node_create(Arena *arena, size_t token_count, TreeNode *parent, TreeNode *left_child, TreeNode *right_child)
 {
 	TreeNode *node = arena_push(arena, sizeof(TreeNode), _Alignof(TreeNode));
 
+	Token **token_arr = NULL;
+	if (token_count > 0)
+	{
+		token_arr = arena_push(arena, sizeof(Token *) * token_count, _Alignof(Token *));
+	}
+
 	*node = (TreeNode){
-		.parent = NULL,
-		.left_child = NULL,
-		.right_child = NULL,
-		.token_arr = &token_arr,
+		.parent = parent,
+		.left_child = left_child,
+		.right_child = right_child,
+		.token_arr = token_arr,
 		.token_count = token_count
 	};
 
 	return node;
 }
-

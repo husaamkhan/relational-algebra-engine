@@ -283,7 +283,7 @@ static inline Tree *tree_create(Arena *arena)
 
 static inline TreeNode *tree_node_create(
 	Arena *arena,
-	Token *tokens,
+	Token *token_arr,
 	size_t token_count
 )
 {
@@ -293,7 +293,7 @@ static inline TreeNode *tree_node_create(
 		.parent = NULL,
 		.left_child = NULL,
 		.right_child = NULL,
-		.tokens = tokens,
+		.token_arr = &token_arr,
 		.token_count = token_count
 	};
 

@@ -20,7 +20,7 @@ static Tree parse_source(const char *src)
 	TEST_ASSERT_FALSE_MESSAGE(lexer.has_error, "lexer should not report errors");
 
 	Parser parser;
-	parser_init(&parser, &token_arena, &tree_node_arena, token_count);
+	parser_init(&parser, &token_arena, token_count, &tree_node_arena);
 
 	Tree tree = (Tree){ .root = NULL };
 	parse(&parser, &tree);

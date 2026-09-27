@@ -6,6 +6,55 @@ static TreeNode *parse_condition(Parser *parser);
 static TreeNode *parse_additive_expression(Parser *parser);
 static TreeNode *parse_join(Parser *parser, TreeNode *left);
 
+static Category get_word_category(const Token *token)
+{
+	if (token->lexeme_length == 6 &&
+			strncmp(token->lexeme_start, "select", 6) == 0)
+		return SELECT;
+
+	if (token->lexeme_length == 7 &&
+			strncmp(token->lexeme_start, "project", 7) == 0)
+		return PROJECT;
+
+	if (token->lexeme_length == 6 &&
+			strncmp(token->lexeme_start, "rename", 6) == 0)
+		return RENAME;
+
+	if (token->lexeme_length == 5 &&
+			strncmp(token->lexeme_start, "union", 5) == 0)
+		return UNION;
+
+	if (token->lexeme_length == 9 &&
+			strncmp(token->lexeme_start, "intersect", 9) == 0)
+		return INTERSECT;
+
+	if (token->lexeme_length == 5 &&
+			strncmp(token->lexeme_start, "minus", 5) == 0)
+		return MINUS;
+
+	if (token->lexeme_length == 5 &&
+			strncmp(token->lexeme_start, "times", 5) == 0)
+		return TIMES;
+
+	if (token->lexeme_length == 4 &&
+			strncmp(token->lexeme_start, "join", 4) == 0)
+		return JOIN;
+
+	if (token->lexeme_length == 3 &&
+			strncmp(token->lexeme_start, "not", 3) == 0)
+		return NOT;
+
+	if (token->lexeme_length == 3 &&
+			strncmp(token->lexeme_start, "and", 3) == 0)
+		return AND;
+
+	if (token->lexeme_length == 2 &&
+			strncmp(token->lexeme_start, "or", 2) == 0)
+		return OR;
+
+	return IDENT;
+}
+
 static Token *peek(Parser *parser)
 {
 	if (parser->cur_pos >= parser->token_count)
@@ -13,6 +62,16 @@ static Token *peek(Parser *parser)
 		return NULL;
 	}
 	return parser->cur_token;
+}
+
+static Token *peek_next(Parser *parser)
+{
+	if (parser->cur_pos + 1 >= parser->token_count)
+	{
+		return NULL;
+	}
+
+	return (Token *)parser->token_arena->base + parser->cur_pos + 1;
 }
 
 static Token *advance(Parser *parser)
@@ -49,12 +108,12 @@ static TreeNode *parse_rename(Parser *parser)
 	rename_token->category = RENAME;
 
 	TreeNode *node = tree_node_create(
-		parser->node_arena,
-		1,
-		NULL,
-		NULL,
-		NULL
-	);
+			parser->node_arena,
+			1,
+			NULL,
+			NULL,
+			NULL
+			);
 
 	node->token_arr[0] = rename_token;
 
@@ -83,10 +142,10 @@ static TreeNode *parse_rename(Parser *parser)
 	if (name->category != WORD)
 	{
 		SYNTAX_ERR("Expected identifier at %d:%d (got '%.*s')",
-		           name->pos.row,
-		           name->pos.col,
-		           (int)name->lexeme_length,
-		           name->lexeme_start);
+				name->pos.row,
+				name->pos.col,
+				(int)name->lexeme_length,
+				name->lexeme_start);
 		parser->has_error = true;
 		return node;
 	}
@@ -94,12 +153,12 @@ static TreeNode *parse_rename(Parser *parser)
 	name->category = IDENT;
 
 	TreeNode *new_name = tree_node_create(
-		parser->node_arena,
-		1,
-		NULL,
-		NULL,
-		NULL
-	);
+			parser->node_arena,
+			1,
+			NULL,
+			NULL,
+			NULL
+			);
 
 	new_name->token_arr[0] = advance(parser);
 
@@ -164,12 +223,12 @@ static TreeNode *parse_project(Parser *parser)
 	project_token->category = PROJECT;
 
 	TreeNode *node = tree_node_create(
-		parser->node_arena,
-		1,
-		NULL,
-		NULL,
-		NULL
-	);
+			parser->node_arena,
+			1,
+			NULL,
+			NULL,
+			NULL
+			);
 
 	node->token_arr[0] = project_token;
 
@@ -198,10 +257,10 @@ static TreeNode *parse_project(Parser *parser)
 	if (token->category != WORD)
 	{
 		SYNTAX_ERR("Expected attribute name at %d:%d (got '%.*s')",
-		           token->pos.row,
-		           token->pos.col,
-		           (int)token->lexeme_length,
-		           token->lexeme_start);
+				token->pos.row,
+				token->pos.col,
+				(int)token->lexeme_length,
+				token->lexeme_start);
 		parser->has_error = true;
 		return node;
 	}
@@ -236,10 +295,10 @@ static TreeNode *parse_project(Parser *parser)
 		if (token->category != WORD)
 		{
 			SYNTAX_ERR("Expected attribute name after ',' at %d:%d (got '%.*s')",
-			           token->pos.row,
-			           token->pos.col,
-			           (int)token->lexeme_length,
-			           token->lexeme_start);
+					token->pos.row,
+					token->pos.col,
+					(int)token->lexeme_length,
+					token->lexeme_start);
 			parser->has_error = true;
 			return node;
 		}
@@ -249,12 +308,12 @@ static TreeNode *parse_project(Parser *parser)
 	}
 
 	TreeNode *attributes = tree_node_create(
-		parser->node_arena,
-		attribute_count,
-		NULL,
-		NULL,
-		NULL
-	);
+			parser->node_arena,
+			attribute_count,
+			NULL,
+			NULL,
+			NULL
+			);
 
 	for (size_t i = 0; i < attribute_count; i++)
 	{
@@ -330,12 +389,12 @@ static TreeNode *parse_select(Parser *parser)
 	select_token->category = SELECT;
 
 	TreeNode *node = tree_node_create(
-		parser->node_arena,
-		1,
-		NULL,
-		NULL,
-		NULL
-	);
+			parser->node_arena,
+			1,
+			NULL,
+			NULL,
+			NULL
+			);
 
 	node->token_arr[0] = select_token;
 
@@ -370,10 +429,10 @@ static TreeNode *parse_select(Parser *parser)
 		else
 		{
 			SYNTAX_ERR("Expected ']' at %d:%d (got '%.*s')",
-			           token->pos.row,
-			           token->pos.col,
-			           (int)token->lexeme_length,
-			           token->lexeme_start);
+					token->pos.row,
+					token->pos.col,
+					(int)token->lexeme_length,
+					token->lexeme_start);
 		}
 
 		parser->has_error = true;
@@ -393,8 +452,8 @@ static TreeNode *parse_select(Parser *parser)
 		else
 		{
 			SYNTAX_ERR("Expected '(' after select condition at %d:%d",
-			           token->pos.row,
-			           token->pos.col);
+					token->pos.row,
+					token->pos.col);
 		}
 
 		parser->has_error = true;
@@ -421,10 +480,10 @@ static TreeNode *parse_select(Parser *parser)
 		else
 		{
 			SYNTAX_ERR("Expected ')' at %d:%d (got '%.*s')",
-			           token->pos.row,
-			           token->pos.col,
-			           (int)token->lexeme_length,
-			           token->lexeme_start);
+					token->pos.row,
+					token->pos.col,
+					(int)token->lexeme_length,
+					token->lexeme_start);
 		}
 
 		parser->has_error = true;
@@ -470,10 +529,10 @@ static TreeNode *parse_atom_expression(Parser *parser)
 			else
 			{
 				SYNTAX_ERR("Expected ')' at %d:%d (got '%.*s')",
-				           token->pos.row,
-				           token->pos.col,
-				           (int)token->lexeme_length,
-				           token->lexeme_start);
+						token->pos.row,
+						token->pos.col,
+						(int)token->lexeme_length,
+						token->lexeme_start);
 			}
 
 			parser->has_error = true;
@@ -490,12 +549,12 @@ static TreeNode *parse_atom_expression(Parser *parser)
 		advance(parser);
 
 		TreeNode *node = tree_node_create(
-			parser->node_arena,
-			1,
-			NULL,
-			NULL,
-			NULL
-		);
+				parser->node_arena,
+				1,
+				NULL,
+				NULL,
+				NULL
+				);
 
 		node->token_arr[0] = token;
 
@@ -503,10 +562,10 @@ static TreeNode *parse_atom_expression(Parser *parser)
 	}
 
 	SYNTAX_ERR("Expected expression at %d:%d (got '%.*s')",
-	           token->pos.row,
-	           token->pos.col,
-	           (int)token->lexeme_length,
-	           token->lexeme_start);
+			token->pos.row,
+			token->pos.col,
+			(int)token->lexeme_length,
+			token->lexeme_start);
 	parser->has_error = true;
 	return NULL;
 }
@@ -515,28 +574,27 @@ static TreeNode *parse_unary_expression(Parser *parser)
 {
 	Token *token = peek(parser);
 
-	if (token != NULL &&
-	    token->category == WORD &&
-	    token->lexeme_length == 6 &&
-	    strncmp(token->lexeme_start, "select", 6) == 0)
+	if (token == NULL)
 	{
-		return parse_select(parser);
+		return NULL;
 	}
 
-	if (token != NULL &&
-	    token->category == WORD &&
-	    token->lexeme_length == 7 &&
-	    strncmp(token->lexeme_start, "project", 7) == 0)
+	if (token->category == WORD)
 	{
-		return parse_project(parser);
-	}
+		switch (get_word_category(token))
+		{
+			case SELECT:
+				return parse_select(parser);
 
-	if (token != NULL &&
-	    token->category == WORD &&
-	    token->lexeme_length == 6 &&
-	    strncmp(token->lexeme_start, "rename", 6) == 0)
-	{
-		return parse_rename(parser);
+			case PROJECT:
+				return parse_project(parser);
+
+			case RENAME:
+				return parse_rename(parser);
+
+			default:
+				break;
+		}
 	}
 
 	return parse_atom_expression(parser);
@@ -558,8 +616,8 @@ static TreeNode *parse_join(Parser *parser, TreeNode *left)
 		else
 		{
 			SYNTAX_ERR("Expected '[' after 'join' at %d:%d",
-			           token->pos.row,
-			           token->pos.col);
+					token->pos.row,
+					token->pos.col);
 		}
 
 		parser->has_error = true;
@@ -586,10 +644,10 @@ static TreeNode *parse_join(Parser *parser, TreeNode *left)
 		else
 		{
 			SYNTAX_ERR("Expected ']' after join condition at %d:%d (got '%.*s')",
-			           token->pos.row,
-			           token->pos.col,
-			           (int)token->lexeme_length,
-			           token->lexeme_start);
+					token->pos.row,
+					token->pos.col,
+					(int)token->lexeme_length,
+					token->lexeme_start);
 		}
 
 		parser->has_error = true;
@@ -602,6 +660,8 @@ static TreeNode *parse_join(Parser *parser, TreeNode *left)
 
 	if (right == NULL)
 	{
+		SYNTAX_ERR("Expected identifier at end of input");
+		parser->has_error = true;
 		return NULL;
 	}
 
@@ -614,22 +674,22 @@ static TreeNode *parse_join(Parser *parser, TreeNode *left)
 	};
 
 	TreeNode *relations = tree_node_create(
-		parser->node_arena,
-		1,
-		NULL,
-		left,
-		right
-	);
+			parser->node_arena,
+			1,
+			NULL,
+			left,
+			right
+			);
 
 	relations->token_arr[0] = relations_token;
 
 	TreeNode *node = tree_node_create(
-		parser->node_arena,
-		1,
-		NULL,
-		relations,
-		condition
-	);
+			parser->node_arena,
+			1,
+			NULL,
+			relations,
+			condition
+			);
 
 	node->token_arr[0] = join_token;
 
@@ -653,8 +713,9 @@ static TreeNode *parse_multiplicative_expression(Parser *parser)
 
 	while (check(parser, WORD))
 	{
-		if (parser->cur_token->lexeme_length == 5 &&
-		    strncmp(parser->cur_token->lexeme_start, "times", 5) == 0)
+		Category category = get_word_category(parser->cur_token);
+
+		if (category == TIMES)
 		{
 			Token *operator_token = advance(parser);
 			operator_token->category = TIMES;
@@ -667,12 +728,12 @@ static TreeNode *parse_multiplicative_expression(Parser *parser)
 			}
 
 			TreeNode *node = tree_node_create(
-				parser->node_arena,
-				1,
-				NULL,
-				left,
-				right
-			);
+					parser->node_arena,
+					1,
+					NULL,
+					left,
+					right
+					);
 
 			node->token_arr[0] = operator_token;
 
@@ -681,8 +742,7 @@ static TreeNode *parse_multiplicative_expression(Parser *parser)
 
 			left = node;
 		}
-		else if (parser->cur_token->lexeme_length == 4 &&
-			 strncmp(parser->cur_token->lexeme_start, "join", 4) == 0)
+		else if (category == JOIN)
 		{
 			left = parse_join(parser, left);
 
@@ -696,6 +756,7 @@ static TreeNode *parse_multiplicative_expression(Parser *parser)
 			break;
 		}
 	}
+
 	return left;
 }
 
@@ -708,23 +769,24 @@ static TreeNode *parse_additive_expression(Parser *parser)
 		return NULL;
 	}
 
-	while (check(parser, WORD) &&
-	       ((parser->cur_token->lexeme_length == 5 &&
-	         strncmp(parser->cur_token->lexeme_start, "union", 5) == 0) ||
-	        (parser->cur_token->lexeme_length == 9 &&
-	         strncmp(parser->cur_token->lexeme_start, "intersect", 9) == 0) ||
-	        (parser->cur_token->lexeme_length == 5 &&
-	         strncmp(parser->cur_token->lexeme_start, "minus", 5) == 0)))
+	while (check(parser, WORD))
 	{
+		Category category = get_word_category(parser->cur_token);
+
+		if (category != UNION &&
+				category != INTERSECT &&
+				category != MINUS)
+		{
+			break;
+		}
+
 		Token *operator_token = advance(parser);
 
-		if (operator_token->lexeme_length == 5 &&
-		    strncmp(operator_token->lexeme_start, "union", 5) == 0)
+		if (category == UNION)
 		{
 			operator_token->category = UNION;
 		}
-		else if (operator_token->lexeme_length == 9 &&
-		         strncmp(operator_token->lexeme_start, "intersect", 9) == 0)
+		else if (category == INTERSECT)
 		{
 			operator_token->category = INTERSECT;
 		}
@@ -741,12 +803,12 @@ static TreeNode *parse_additive_expression(Parser *parser)
 		}
 
 		TreeNode *node = tree_node_create(
-			parser->node_arena,
-			1,
-			NULL,
-			left,
-			right
-		);
+				parser->node_arena,
+				1,
+				NULL,
+				left,
+				right
+				);
 
 		node->token_arr[0] = operator_token;
 
@@ -758,7 +820,6 @@ static TreeNode *parse_additive_expression(Parser *parser)
 
 	return left;
 }
-
 static TreeNode *parse_operand(Parser *parser)
 {
 	Token *token = peek(parser);
@@ -773,12 +834,12 @@ static TreeNode *parse_operand(Parser *parser)
 	if (token->category == NUMBER || token->category == STRING)
 	{
 		TreeNode *node = tree_node_create(
-			parser->node_arena,
-			1,
-			NULL,
-			NULL,
-			NULL
-		);
+				parser->node_arena,
+				1,
+				NULL,
+				NULL,
+				NULL
+				);
 
 		node->token_arr[0] = advance(parser);
 
@@ -806,10 +867,10 @@ static TreeNode *parse_operand(Parser *parser)
 			if (second->category != WORD)
 			{
 				SYNTAX_ERR("Expected identifier after '.' at %d:%d (got '%.*s')",
-				           second->pos.row,
-				           second->pos.col,
-				           (int)second->lexeme_length,
-				           second->lexeme_start);
+						second->pos.row,
+						second->pos.col,
+						(int)second->lexeme_length,
+						second->lexeme_start);
 				parser->has_error = true;
 				return NULL;
 			}
@@ -818,12 +879,12 @@ static TreeNode *parse_operand(Parser *parser)
 			advance(parser);
 
 			TreeNode *node = tree_node_create(
-				parser->node_arena,
-				2,
-				NULL,
-				NULL,
-				NULL
-			);
+					parser->node_arena,
+					2,
+					NULL,
+					NULL,
+					NULL
+					);
 
 			node->token_arr[0] = first;
 			node->token_arr[1] = second;
@@ -832,12 +893,12 @@ static TreeNode *parse_operand(Parser *parser)
 		}
 
 		TreeNode *node = tree_node_create(
-			parser->node_arena,
-			1,
-			NULL,
-			NULL,
-			NULL
-		);
+				parser->node_arena,
+				1,
+				NULL,
+				NULL,
+				NULL
+				);
 
 		node->token_arr[0] = first;
 
@@ -845,10 +906,10 @@ static TreeNode *parse_operand(Parser *parser)
 	}
 
 	SYNTAX_ERR("Expected operand at %d:%d (got '%.*s')",
-	           token->pos.row,
-	           token->pos.col,
-	           (int)token->lexeme_length,
-	           token->lexeme_start);
+			token->pos.row,
+			token->pos.col,
+			(int)token->lexeme_length,
+			token->lexeme_start);
 	parser->has_error = true;
 	return NULL;
 }
@@ -865,12 +926,12 @@ static TreeNode *parse_comparison(Parser *parser)
 	Token *operator_token = peek(parser);
 
 	if (operator_token == NULL ||
-	    (operator_token->category != EQUAL &&
-	     operator_token->category != NOT_EQUAL &&
-	     operator_token->category != LESS_THAN &&
-	     operator_token->category != LESS_THAN_OR_EQUAL &&
-	     operator_token->category != GREATER_THAN &&
-	     operator_token->category != GREATER_THAN_OR_EQUAL))
+			(operator_token->category != EQUAL &&
+			 operator_token->category != NOT_EQUAL &&
+			 operator_token->category != LESS_THAN &&
+			 operator_token->category != LESS_THAN_OR_EQUAL &&
+			 operator_token->category != GREATER_THAN &&
+			 operator_token->category != GREATER_THAN_OR_EQUAL))
 	{
 		if (operator_token == NULL)
 		{
@@ -879,10 +940,10 @@ static TreeNode *parse_comparison(Parser *parser)
 		else
 		{
 			SYNTAX_ERR("Expected comparison operator at %d:%d (got '%.*s')",
-			           operator_token->pos.row,
-			           operator_token->pos.col,
-			           (int)operator_token->lexeme_length,
-			           operator_token->lexeme_start);
+					operator_token->pos.row,
+					operator_token->pos.col,
+					(int)operator_token->lexeme_length,
+					operator_token->lexeme_start);
 		}
 
 		parser->has_error = true;
@@ -899,12 +960,12 @@ static TreeNode *parse_comparison(Parser *parser)
 	}
 
 	TreeNode *node = tree_node_create(
-		parser->node_arena,
-		1,
-		NULL,
-		left,
-		right
-	);
+			parser->node_arena,
+			1,
+			NULL,
+			left,
+			right
+			);
 
 	node->token_arr[0] = operator_token;
 
@@ -916,9 +977,7 @@ static TreeNode *parse_comparison(Parser *parser)
 
 static TreeNode *parse_not_expression(Parser *parser)
 {
-	if (check(parser, WORD) &&
-	    parser->cur_token->lexeme_length == 3 &&
-	    strncmp(parser->cur_token->lexeme_start, "not", 3) == 0)
+	if (check(parser, WORD) && get_word_category(parser->cur_token) == NOT)
 	{
 		Token *operator_token = advance(parser);
 		operator_token->category = NOT;
@@ -931,12 +990,12 @@ static TreeNode *parse_not_expression(Parser *parser)
 		}
 
 		TreeNode *node = tree_node_create(
-			parser->node_arena,
-			1,
-			NULL,
-			child,
-			NULL
-		);
+				parser->node_arena,
+				1,
+				NULL,
+				child,
+				NULL
+				);
 
 		node->token_arr[0] = operator_token;
 		child->parent = node;
@@ -961,10 +1020,10 @@ static TreeNode *parse_not_expression(Parser *parser)
 			else
 			{
 				SYNTAX_ERR("Expected ')' at %d:%d (got '%.*s')",
-				           token->pos.row,
-				           token->pos.col,
-				           (int)token->lexeme_length,
-				           token->lexeme_start);
+						token->pos.row,
+						token->pos.col,
+						(int)token->lexeme_length,
+						token->lexeme_start);
 			}
 
 			parser->has_error = true;
@@ -983,8 +1042,7 @@ static TreeNode *parse_and_expression(Parser *parser)
 	TreeNode *left = parse_not_expression(parser);
 
 	while (check(parser, WORD) &&
-	       parser->cur_token->lexeme_length == 3 &&
-	       strncmp(parser->cur_token->lexeme_start, "and", 3) == 0)
+			get_word_category(parser->cur_token) == AND)
 	{
 		Token *operator_token = advance(parser);
 		operator_token->category = AND;
@@ -997,12 +1055,12 @@ static TreeNode *parse_and_expression(Parser *parser)
 		}
 
 		TreeNode *node = tree_node_create(
-			parser->node_arena,
-			1,
-			NULL,
-			left,
-			right
-		);
+				parser->node_arena,
+				1,
+				NULL,
+				left,
+				right
+				);
 
 		node->token_arr[0] = operator_token;
 
@@ -1014,14 +1072,13 @@ static TreeNode *parse_and_expression(Parser *parser)
 
 	return left;
 }
-
 static TreeNode *parse_or_expression(Parser *parser)
 {
 	TreeNode *left = parse_and_expression(parser);
 
 	while (check(parser, WORD) &&
-	       parser->cur_token->lexeme_length == 2 &&
-	       strncmp(parser->cur_token->lexeme_start, "or", 2) == 0)
+			parser->cur_token->lexeme_length == 2 &&
+			strncmp(parser->cur_token->lexeme_start, "or", 2) == 0)
 	{
 		Token *operator_token = advance(parser);
 		operator_token->category = OR;
@@ -1034,12 +1091,12 @@ static TreeNode *parse_or_expression(Parser *parser)
 		}
 
 		TreeNode *node = tree_node_create(
-			parser->node_arena,
-			1,
-			NULL,
-			left,
-			right
-		);
+				parser->node_arena,
+				1,
+				NULL,
+				left,
+				right
+				);
 
 		node->token_arr[0] = operator_token;
 
@@ -1057,6 +1114,11 @@ static TreeNode *parse_condition(Parser *parser)
 	return parse_or_expression(parser);
 }
 
+static bool *parse_relation_definition(Parser *parser)
+{
+	return false;
+}
+
 static TreeNode *parse_statement(Parser *parser)
 {
 	Token *token = peek(parser);
@@ -1066,13 +1128,24 @@ static TreeNode *parse_statement(Parser *parser)
 		return NULL;
 	}
 
+	if (token->category == WORD &&
+			get_word_category(token) == IDENT)
+	{
+		Token *next = peek_next(parser);
+
+		if (next != NULL && next->category == LPAREN)
+		{
+			return parse_relation_definition(parser);
+		}
+	}
+
 	if (token->category != WORD && token->category != LPAREN)
 	{
-		SYNTAX_ERR("Expected identifier or '(' at %d:%d (got '%.*s')",
-		           token->pos.row,
-		           token->pos.col,
-		           (int)token->lexeme_length,
-		           token->lexeme_start);
+		SYNTAX_ERR("Expected identifier, keyword, or '(' at %d:%d (got '%.*s')",
+				token->pos.row,
+				token->pos.col,
+				(int)token->lexeme_length,
+				token->lexeme_start);
 		parser->has_error = true;
 		return NULL;
 	}
@@ -1164,8 +1237,8 @@ void parse(Parser *parser, Tree *tree)
 		if (next != NULL && next->category != NEWLINE)
 		{
 			SYNTAX_ERR("Expected end of statement at %d:%d (got '%.*s')",
-			           next->pos.row, next->pos.col,
-			           (int)next->lexeme_length, next->lexeme_start);
+					next->pos.row, next->pos.col,
+					(int)next->lexeme_length, next->lexeme_start);
 			parser->has_error = true;
 		}
 

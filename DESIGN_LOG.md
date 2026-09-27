@@ -84,3 +84,8 @@
     /    \        / \
    R      S      A   B
 ```
+
+## September 27
+-   I found that my AI tool was repeating similar keyword lexeme matching logic to check which parse function to run in different scenarios.
+    Replaced this with a get_word_category helper function that returns a category enum based on the tokens lexeme.
+

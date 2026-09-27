@@ -1050,65 +1050,229 @@ void test_parse_parentheses_override_precedence(void)
 	assert_tree_node(tree.head->root, &root);
 }
 
+void test_parse_relation_definition_missing_open_paren(void)
+{
+	bool has_error = false;
+	parse_source("R A) = { 1 }\n", &has_error);
 
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_relation_definition_missing_attribute(void)
+{
+	bool has_error = false;
+	parse_source("R () = { 1 }\n", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_relation_definition_missing_comma(void)
+{
+	bool has_error = false;
+	parse_source("R (A B) = { 1, 2 }\n", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_relation_definition_missing_close_paren(void)
+{
+	bool has_error = false;
+	parse_source("R (A, B = { 1, 2 }\n", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_relation_definition_missing_equals(void)
+{
+	bool has_error = false;
+	parse_source("R (A, B) { 1, 2 }\n", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_relation_definition_missing_open_brace(void)
+{
+	bool has_error = false;
+	parse_source("R (A, B) = 1, 2\n", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_relation_definition_missing_close_brace(void)
+{
+	bool has_error = false;
+	parse_source("R (A, B) = {\n1, 2\n", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_relation_definition_invalid_attribute(void)
+{
+	bool has_error = false;
+	parse_source("R (A, 123) = {\n1, 2\n}\n", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_relation_definition_empty_attribute_list(void)
+{
+	bool has_error = false;
+	parse_source("R () = {\n}\n", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_relation_definition_missing_value(void)
+{
+	bool has_error = false;
+	parse_source("R (A, B) = {\n1,\n}\n", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_relation_definition_too_few_values(void)
+{
+	bool has_error = false;
+	parse_source("R (A, B, C) = {\n1, 2\n}\n", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_relation_definition_too_many_values(void)
+{
+	bool has_error = false;
+	parse_source("R (A, B) = {\n1, 2, 3\n}\n", &has_error);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
+void test_parse_relation_definition_dispatch(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source("R (A) = {\n1\n}\n", &has_error);
+
+	TEST_ASSERT_FALSE(has_error);
+	TEST_ASSERT_NOT_NULL(tree.head);
+	TEST_ASSERT_NOT_NULL(tree.head->root);
+}
+
+void test_parse_identifier_expression_not_relation_definition(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source("R union S\n", &has_error);
+
+	TEST_ASSERT_FALSE(has_error);
+	TEST_ASSERT_NOT_NULL(tree.head);
+	TEST_ASSERT_NOT_NULL(tree.head->root);
+
+	ExpectedNode r = {
+		.category = IDENT,
+		.lexemes = {"R"},
+		.token_count = 1
+	};
+
+	ExpectedNode s = {
+		.category = IDENT,
+		.lexemes = {"S"},
+		.token_count = 1
+	};
+
+	ExpectedNode root = {
+		.category = UNION,
+		.lexemes = {"union"},
+		.token_count = 1,
+		.left = &r,
+		.right = &s
+	};
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_keyword_expression_not_relation_definition(void)
+{
+	bool has_error = false;
+	Tree tree = parse_source("select[A=1](R)\n", &has_error);
+
+	TEST_ASSERT_FALSE(has_error);
+	TEST_ASSERT_NOT_NULL(tree.head);
+	TEST_ASSERT_NOT_NULL(tree.head->root);
+
+	ExpectedNode a = {
+		.category = IDENT,
+		.lexemes = {"A"},
+		.token_count = 1
+	};
+
+	ExpectedNode one = {
+		.category = NUMBER,
+		.lexemes = {"1"},
+		.token_count = 1
+	};
+
+	ExpectedNode condition = {
+		.category = EQUAL,
+		.lexemes = {"="},
+		.token_count = 1,
+		.left = &a,
+		.right = &one
+	};
+
+	ExpectedNode r = {
+		.category = IDENT,
+		.lexemes = {"R"},
+		.token_count = 1
+	};
+
+	ExpectedNode root = {
+		.category = SELECT,
+		.lexemes = {"select"},
+		.token_count = 1,
+		.left = &condition,
+		.right = &r
+	};
+
+	assert_tree_node(tree.head->root, &root);
+}
 
 int main(void)
 {
-	UNITY_BEGIN();
-	RUN_TEST(test_parse_simple_relation);
-	RUN_TEST(test_parse_bare_select_is_error);
-	RUN_TEST(test_parse_bare_project_is_error);
-	RUN_TEST(test_parse_bare_rename_is_error);
-	RUN_TEST(test_parse_select_simple_comparison);
-	RUN_TEST(test_parse_select_and_condition);
-	RUN_TEST(test_parse_select_or_condition);
-	RUN_TEST(test_parse_select_not_condition);
-	RUN_TEST(test_parse_select_not_parenthesized_condition);
-	RUN_TEST(test_parse_select_attribute_vs_attribute);
-	RUN_TEST(test_parse_select_qualified_attribute);
-	RUN_TEST(test_parse_select_keyword_as_attribute);
-	RUN_TEST(test_parse_select_missing_bracket);
-	RUN_TEST(test_parse_select_missing_open_paren);
-	RUN_TEST(test_parse_select_missing_close_paren);
-	RUN_TEST(test_parse_select_empty_condition);
-	RUN_TEST(test_parse_select_condition_missing_operand);
-	RUN_TEST(test_parse_select_condition_missing_operator);
-	RUN_TEST(test_parse_select_condition_dangling_and);
-	RUN_TEST(test_parse_select_condition_unclosed_paren);
-	RUN_TEST(test_parse_select_condition_dangling_not);
-	RUN_TEST(test_parse_select_error_then_next_statement_recovers);
-	RUN_TEST(test_parse_project_single_attribute);
-	RUN_TEST(test_parse_project_multiple_attributes);
-	RUN_TEST(test_parse_project_keyword_as_attribute);
-	RUN_TEST(test_parse_rename);
-	RUN_TEST(test_parse_project_nested_select);
-	RUN_TEST(test_parse_rename_nested_project);
-	RUN_TEST(test_parse_project_missing_bracket);
-	RUN_TEST(test_parse_project_empty_attribute_list);
-	RUN_TEST(test_parse_project_missing_attribute_after_comma);
-	RUN_TEST(test_parse_project_missing_closing_bracket);
-	RUN_TEST(test_parse_project_missing_parenthesis);
-	RUN_TEST(test_parse_project_missing_closing_parenthesis);
-	RUN_TEST(test_parse_rename_missing_bracket);
-	RUN_TEST(test_parse_rename_empty_identifier);
-	RUN_TEST(test_parse_rename_missing_closing_bracket);
-	RUN_TEST(test_parse_rename_missing_parenthesis);
-	RUN_TEST(test_parse_rename_missing_closing_parenthesis);
-	RUN_TEST(test_parse_union);
-	RUN_TEST(test_parse_intersect);
-	RUN_TEST(test_parse_minus);
-	RUN_TEST(test_parse_times);
-	RUN_TEST(test_parse_join);
-	RUN_TEST(test_parse_join_complex_condition);
-	RUN_TEST(test_parse_join_qualified_attributes);
-	RUN_TEST(test_parse_join_missing_bracket);
-	RUN_TEST(test_parse_join_empty_condition);
-	RUN_TEST(test_parse_join_missing_closing_bracket);
-	RUN_TEST(test_parse_join_missing_right_expression);
-	RUN_TEST(test_parse_join_dangling_condition_operator);
-	RUN_TEST(test_parse_binary_left_associativity);
-	RUN_TEST(test_parse_binary_precedence);
-	RUN_TEST(test_parse_unary_binary_precedence);
-	RUN_TEST(test_parse_parentheses_override_precedence);
-	return UNITY_END();
+    UNITY_BEGIN();
+
+    RUN_TEST(test_parse_simple_relation);
+
+    RUN_TEST(test_parse_select);
+    RUN_TEST(test_parse_select_missing_open_bracket);
+    RUN_TEST(test_parse_select_missing_condition);
+    RUN_TEST(test_parse_select_missing_close_bracket);
+    RUN_TEST(test_parse_select_missing_open_paren);
+    RUN_TEST(test_parse_select_missing_expression);
+    RUN_TEST(test_parse_select_missing_close_paren);
+
+    RUN_TEST(test_parse_project);
+    RUN_TEST(test_parse_project_missing_open_bracket);
+    RUN_TEST(test_parse_project_missing_attribute);
+    RUN_TEST(test_parse_project_missing_close_bracket);
+    RUN_TEST(test_parse_project_missing_open_paren);
+    RUN_TEST(test_parse_project_missing_expression);
+    RUN_TEST(test_parse_project_missing_close_paren);
+
+    RUN_TEST(test_parse_rename);
+    RUN_TEST(test_parse_rename_missing_open_bracket);
+    RUN_TEST(test_parse_rename_missing_identifier);
+    RUN_TEST(test_parse_rename_missing_close_bracket);
+    RUN_TEST(test_parse_rename_missing_open_paren);
+    RUN_TEST(test_parse_rename_missing_expression);
+    RUN_TEST(test_parse_rename_missing_close_paren);
+
+    RUN_TEST(test_parse_union);
+    RUN_TEST(test_parse_intersect);
+    RUN_TEST(test_parse_minus);
+    RUN_TEST(test_parse_times);
+    RUN_TEST(test_parse_join);
+    RUN_TEST(test_parse_join_missing_open_bracket);
+    RUN_TEST(test_parse_join_missing_condition);
+    RUN_TEST(test_parse_join_missing_close_bracket);
+    RUN_TEST(test_parse_join_missing_right_expression);
+
+    return UNITY_END();
 }

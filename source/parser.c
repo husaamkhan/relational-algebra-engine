@@ -1677,7 +1677,9 @@ static TreeNode *parse_statement(Parser *parser)
 	{
 		Token *next = peek_next(parser);
 
-		if (next != NULL && next->category == LPAREN)
+		if (get_word_category(token) == IDENT &&
+				next != NULL &&
+				next->category == LPAREN)
 		{
 			return parse_relation_definition(parser);
 		}

@@ -44,8 +44,19 @@ static Tree parse_source(const char *src, bool *has_error_out)
 static void assert_token_lexeme(Token *token, const char *expected)
 {
 	TEST_ASSERT_NOT_NULL(token);
+
+	if (expected == NULL)
+	{
+		TEST_ASSERT_NULL(token->lexeme_start);
+		TEST_ASSERT_EQUAL_size_t(0, token->lexeme_length);
+		return;
+	}
+
 	TEST_ASSERT_EQUAL_size_t(strlen(expected), token->lexeme_length);
-	TEST_ASSERT_EQUAL_INT(0, strncmp(token->lexeme_start, expected, token->lexeme_length));
+	TEST_ASSERT_EQUAL_INT(
+		0,
+		strncmp(token->lexeme_start, expected, token->lexeme_length)
+	);
 }
 
 static void assert_tree_node(const TreeNode *actual, const ExpectedNode *expected)
@@ -1050,11 +1061,290 @@ void test_parse_parentheses_override_precedence(void)
 	assert_tree_node(tree.head->root, &root);
 }
 
+void test_parse_relation_definition(void)
+{
+	bool has_error = false;
+
+	Tree tree = parse_source(
+		"Employees (EID, Name, Age, DID) = {\n"
+		"E1, John, 32, D1\n"
+		"}\n",
+		&has_error
+	);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode name = {
+		.category = IDENT,
+		.lexemes = {"Employees"},
+		.token_count = 1
+	};
+
+	ExpectedNode attributes = {
+		.category = ATTRIBUTE_LIST,
+		.lexemes = {"EID", "Name", "Age", "DID"},
+		.token_count = 4
+	};
+
+	ExpectedNode definition = {
+		.category = RELATION_DEFINITION,
+		.lexemes = {NULL},
+		.token_count = 1,
+		.left = &name,
+		.right = &attributes
+	};
+
+	ExpectedNode tuple = {
+		.category = TUPLE,
+		.lexemes = {"E1", "John", "32", "D1"},
+		.token_count = 4
+	};
+
+	ExpectedNode root = {
+		.category = EQUAL,
+		.lexemes = {"="},
+		.token_count = 1,
+		.left = &definition,
+		.right = &tuple
+	};
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_relation_definition_multiple_tuples(void)
+{
+	bool has_error = false;
+
+	Tree tree = parse_source(
+		"Employees (EID, Name, Age, DID) = {\n"
+		"E1, John, 32, D1\n"
+		"E2, Alice, 28, D2\n"
+		"E3, Bob, 29, D1\n"
+		"}\n",
+		&has_error
+	);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode name = {
+		.category = IDENT,
+		.lexemes = {"Employees"},
+		.token_count = 1
+	};
+
+	ExpectedNode attributes = {
+		.category = ATTRIBUTE_LIST,
+		.lexemes = {"EID", "Name", "Age", "DID"},
+		.token_count = 4
+	};
+
+	ExpectedNode definition = {
+		.category = RELATION_DEFINITION,
+		.lexemes = {NULL},
+		.token_count = 1,
+		.left = &name,
+		.right = &attributes
+	};
+
+	ExpectedNode tuple3 = {
+		.category = TUPLE,
+		.lexemes = {"E3", "Bob", "29", "D1"},
+		.token_count = 4
+	};
+
+	ExpectedNode tuple2 = {
+		.category = TUPLE,
+		.lexemes = {"E2", "Alice", "28", "D2"},
+		.token_count = 4,
+		.left = &tuple3
+	};
+
+	ExpectedNode tuple1 = {
+		.category = TUPLE,
+		.lexemes = {"E1", "John", "32", "D1"},
+		.token_count = 4,
+		.left = &tuple2
+	};
+
+	ExpectedNode root = {
+		.category = EQUAL,
+		.lexemes = {"="},
+		.token_count = 1,
+		.left = &definition,
+		.right = &tuple1
+	};
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_relation_definition_single_attribute(void)
+{
+	bool has_error = false;
+
+	Tree tree = parse_source(
+		"R (A) = {\n"
+		"1\n"
+		"}\n",
+		&has_error
+	);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode name = {
+		.category = IDENT,
+		.lexemes = {"R"},
+		.token_count = 1
+	};
+
+	ExpectedNode attributes = {
+		.category = ATTRIBUTE_LIST,
+		.lexemes = {"A"},
+		.token_count = 1
+	};
+
+	ExpectedNode definition = {
+		.category = RELATION_DEFINITION,
+		.lexemes = {NULL},
+		.token_count = 1,
+		.left = &name,
+		.right = &attributes
+	};
+
+	ExpectedNode tuple = {
+		.category = TUPLE,
+		.lexemes = {"1"},
+		.token_count = 1
+	};
+
+	ExpectedNode root = {
+		.category = EQUAL,
+		.lexemes = {"="},
+		.token_count = 1,
+		.left = &definition,
+		.right = &tuple
+	};
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_relation_definition_tuple_values(void)
+{
+	bool has_error = false;
+
+	Tree tree = parse_source(
+		"R (A, B, C, D) = {\n"
+		"123, 'hello', 45.67, foo\n"
+		"}\n",
+		&has_error
+	);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode name = {
+		.category = IDENT,
+		.lexemes = {"R"},
+		.token_count = 1
+	};
+
+	ExpectedNode attributes = {
+		.category = ATTRIBUTE_LIST,
+		.lexemes = {"A", "B", "C", "D"},
+		.token_count = 4
+	};
+
+	ExpectedNode definition = {
+		.category = RELATION_DEFINITION,
+		.lexemes = {NULL},
+		.token_count = 1,
+		.left = &name,
+		.right = &attributes
+	};
+
+	ExpectedNode tuple = {
+		.category = TUPLE,
+		.lexemes = {"123", "'hello'", "45.67", "foo"},
+		.token_count = 4
+	};
+
+	ExpectedNode root = {
+		.category = EQUAL,
+		.lexemes = {"="},
+		.token_count = 1,
+		.left = &definition,
+		.right = &tuple
+	};
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_relation_definition_keyword_attribute(void)
+{
+	bool has_error = false;
+
+	Tree tree = parse_source(
+		"R (select, union, Age) = {\n"
+		"1, 2, 3\n"
+		"}\n",
+		&has_error
+	);
+
+	TEST_ASSERT_FALSE(has_error);
+
+	ExpectedNode name = {
+		.category = IDENT,
+		.lexemes = {"R"},
+		.token_count = 1
+	};
+
+	ExpectedNode attributes = {
+		.category = ATTRIBUTE_LIST,
+		.lexemes = {"select", "union", "Age"},
+		.token_count = 3
+	};
+
+	ExpectedNode definition = {
+		.category = RELATION_DEFINITION,
+		.lexemes = {NULL},
+		.token_count = 1,
+		.left = &name,
+		.right = &attributes
+	};
+
+	ExpectedNode tuple = {
+		.category = TUPLE,
+		.lexemes = {"1", "2", "3"},
+		.token_count = 3
+	};
+
+	ExpectedNode root = {
+		.category = EQUAL,
+		.lexemes = {"="},
+		.token_count = 1,
+		.left = &definition,
+		.right = &tuple
+	};
+
+	assert_tree_node(tree.head->root, &root);
+}
+
+void test_parse_relation_definition_keyword_relation_name(void)
+{
+	bool has_error = false;
+
+	parse_source(
+		"select (A) = {\n"
+		"1\n"
+		"}\n",
+		&has_error
+	);
+
+	TEST_ASSERT_TRUE(has_error);
+}
+
 void test_parse_relation_definition_missing_open_paren(void)
 {
 	bool has_error = false;
 	parse_source("R A) = { 1 }\n", &has_error);
-
 	TEST_ASSERT_TRUE(has_error);
 }
 
@@ -1062,7 +1352,6 @@ void test_parse_relation_definition_missing_attribute(void)
 {
 	bool has_error = false;
 	parse_source("R () = { 1 }\n", &has_error);
-
 	TEST_ASSERT_TRUE(has_error);
 }
 
@@ -1070,7 +1359,6 @@ void test_parse_relation_definition_missing_comma(void)
 {
 	bool has_error = false;
 	parse_source("R (A B) = { 1, 2 }\n", &has_error);
-
 	TEST_ASSERT_TRUE(has_error);
 }
 
@@ -1078,7 +1366,6 @@ void test_parse_relation_definition_missing_close_paren(void)
 {
 	bool has_error = false;
 	parse_source("R (A, B = { 1, 2 }\n", &has_error);
-
 	TEST_ASSERT_TRUE(has_error);
 }
 
@@ -1086,7 +1373,6 @@ void test_parse_relation_definition_missing_equals(void)
 {
 	bool has_error = false;
 	parse_source("R (A, B) { 1, 2 }\n", &has_error);
-
 	TEST_ASSERT_TRUE(has_error);
 }
 
@@ -1094,14 +1380,17 @@ void test_parse_relation_definition_missing_open_brace(void)
 {
 	bool has_error = false;
 	parse_source("R (A, B) = 1, 2\n", &has_error);
-
 	TEST_ASSERT_TRUE(has_error);
 }
 
 void test_parse_relation_definition_missing_close_brace(void)
 {
 	bool has_error = false;
-	parse_source("R (A, B) = {\n1, 2\n", &has_error);
+	parse_source(
+		"R (A, B) = {\n"
+		"1, 2\n",
+		&has_error
+	);
 
 	TEST_ASSERT_TRUE(has_error);
 }
@@ -1109,7 +1398,12 @@ void test_parse_relation_definition_missing_close_brace(void)
 void test_parse_relation_definition_invalid_attribute(void)
 {
 	bool has_error = false;
-	parse_source("R (A, 123) = {\n1, 2\n}\n", &has_error);
+	parse_source(
+		"R (A, 123) = {\n"
+		"1, 2\n"
+		"}\n",
+		&has_error
+	);
 
 	TEST_ASSERT_TRUE(has_error);
 }
@@ -1117,7 +1411,11 @@ void test_parse_relation_definition_invalid_attribute(void)
 void test_parse_relation_definition_empty_attribute_list(void)
 {
 	bool has_error = false;
-	parse_source("R () = {\n}\n", &has_error);
+	parse_source(
+		"R () = {\n"
+		"}\n",
+		&has_error
+	);
 
 	TEST_ASSERT_TRUE(has_error);
 }
@@ -1125,7 +1423,12 @@ void test_parse_relation_definition_empty_attribute_list(void)
 void test_parse_relation_definition_missing_value(void)
 {
 	bool has_error = false;
-	parse_source("R (A, B) = {\n1,\n}\n", &has_error);
+	parse_source(
+		"R (A, B) = {\n"
+		"1,\n"
+		"}\n",
+		&has_error
+	);
 
 	TEST_ASSERT_TRUE(has_error);
 }
@@ -1133,7 +1436,12 @@ void test_parse_relation_definition_missing_value(void)
 void test_parse_relation_definition_too_few_values(void)
 {
 	bool has_error = false;
-	parse_source("R (A, B, C) = {\n1, 2\n}\n", &has_error);
+	parse_source(
+		"R (A, B, C) = {\n"
+		"1, 2\n"
+		"}\n",
+		&has_error
+	);
 
 	TEST_ASSERT_TRUE(has_error);
 }
@@ -1141,29 +1449,26 @@ void test_parse_relation_definition_too_few_values(void)
 void test_parse_relation_definition_too_many_values(void)
 {
 	bool has_error = false;
-	parse_source("R (A, B) = {\n1, 2, 3\n}\n", &has_error);
+	parse_source(
+		"R (A, B) = {\n"
+		"1, 2, 3\n"
+		"}\n",
+		&has_error
+	);
 
 	TEST_ASSERT_TRUE(has_error);
-}
-
-void test_parse_relation_definition_dispatch(void)
-{
-	bool has_error = false;
-	Tree tree = parse_source("R (A) = {\n1\n}\n", &has_error);
-
-	TEST_ASSERT_FALSE(has_error);
-	TEST_ASSERT_NOT_NULL(tree.head);
-	TEST_ASSERT_NOT_NULL(tree.head->root);
 }
 
 void test_parse_identifier_expression_not_relation_definition(void)
 {
 	bool has_error = false;
-	Tree tree = parse_source("R union S\n", &has_error);
+
+	Tree tree = parse_source(
+		"R union S\n",
+		&has_error
+	);
 
 	TEST_ASSERT_FALSE(has_error);
-	TEST_ASSERT_NOT_NULL(tree.head);
-	TEST_ASSERT_NOT_NULL(tree.head->root);
 
 	ExpectedNode r = {
 		.category = IDENT,
@@ -1188,50 +1493,25 @@ void test_parse_identifier_expression_not_relation_definition(void)
 	assert_tree_node(tree.head->root, &root);
 }
 
-void test_parse_keyword_expression_not_relation_definition(void)
+void test_parse_relation_definition_dispatch(void)
 {
 	bool has_error = false;
-	Tree tree = parse_source("select[A=1](R)\n", &has_error);
+
+	Tree tree = parse_source(
+		"R (A) = {\n"
+		"1\n"
+		"}\n",
+		&has_error
+	);
 
 	TEST_ASSERT_FALSE(has_error);
+
 	TEST_ASSERT_NOT_NULL(tree.head);
 	TEST_ASSERT_NOT_NULL(tree.head->root);
-
-	ExpectedNode a = {
-		.category = IDENT,
-		.lexemes = {"A"},
-		.token_count = 1
-	};
-
-	ExpectedNode one = {
-		.category = NUMBER,
-		.lexemes = {"1"},
-		.token_count = 1
-	};
-
-	ExpectedNode condition = {
-		.category = EQUAL,
-		.lexemes = {"="},
-		.token_count = 1,
-		.left = &a,
-		.right = &one
-	};
-
-	ExpectedNode r = {
-		.category = IDENT,
-		.lexemes = {"R"},
-		.token_count = 1
-	};
-
-	ExpectedNode root = {
-		.category = SELECT,
-		.lexemes = {"select"},
-		.token_count = 1,
-		.left = &condition,
-		.right = &r
-	};
-
-	assert_tree_node(tree.head->root, &root);
+	TEST_ASSERT_EQUAL_INT(
+		EQUAL,
+		tree.head->root->token_arr[0]->category
+	);
 }
 
 int main(void)
@@ -1239,40 +1519,87 @@ int main(void)
     UNITY_BEGIN();
 
     RUN_TEST(test_parse_simple_relation);
+    RUN_TEST(test_parse_bare_select_is_error);
+    RUN_TEST(test_parse_bare_project_is_error);
+    RUN_TEST(test_parse_bare_rename_is_error);
 
-    RUN_TEST(test_parse_select);
-    RUN_TEST(test_parse_select_missing_open_bracket);
-    RUN_TEST(test_parse_select_missing_condition);
-    RUN_TEST(test_parse_select_missing_close_bracket);
+    RUN_TEST(test_parse_select_simple_comparison);
+    RUN_TEST(test_parse_select_and_condition);
+    RUN_TEST(test_parse_select_or_condition);
+    RUN_TEST(test_parse_select_not_condition);
+    RUN_TEST(test_parse_select_not_parenthesized_condition);
+    RUN_TEST(test_parse_select_attribute_vs_attribute);
+    RUN_TEST(test_parse_select_qualified_attribute);
+    RUN_TEST(test_parse_select_keyword_as_attribute);
+    RUN_TEST(test_parse_select_missing_bracket);
     RUN_TEST(test_parse_select_missing_open_paren);
-    RUN_TEST(test_parse_select_missing_expression);
     RUN_TEST(test_parse_select_missing_close_paren);
+    RUN_TEST(test_parse_select_empty_condition);
+    RUN_TEST(test_parse_select_condition_missing_operand);
+    RUN_TEST(test_parse_select_condition_missing_operator);
+    RUN_TEST(test_parse_select_condition_dangling_and);
+    RUN_TEST(test_parse_select_condition_unclosed_paren);
+    RUN_TEST(test_parse_select_condition_dangling_not);
+    RUN_TEST(test_parse_select_error_then_next_statement_recovers);
 
-    RUN_TEST(test_parse_project);
-    RUN_TEST(test_parse_project_missing_open_bracket);
-    RUN_TEST(test_parse_project_missing_attribute);
-    RUN_TEST(test_parse_project_missing_close_bracket);
-    RUN_TEST(test_parse_project_missing_open_paren);
-    RUN_TEST(test_parse_project_missing_expression);
-    RUN_TEST(test_parse_project_missing_close_paren);
+    RUN_TEST(test_parse_project_single_attribute);
+    RUN_TEST(test_parse_project_multiple_attributes);
+    RUN_TEST(test_parse_project_keyword_as_attribute);
+    RUN_TEST(test_parse_project_nested_select);
+    RUN_TEST(test_parse_project_missing_bracket);
+    RUN_TEST(test_parse_project_empty_attribute_list);
+    RUN_TEST(test_parse_project_missing_attribute_after_comma);
+    RUN_TEST(test_parse_project_missing_closing_bracket);
+    RUN_TEST(test_parse_project_missing_parenthesis);
+    RUN_TEST(test_parse_project_missing_closing_parenthesis);
 
     RUN_TEST(test_parse_rename);
-    RUN_TEST(test_parse_rename_missing_open_bracket);
-    RUN_TEST(test_parse_rename_missing_identifier);
-    RUN_TEST(test_parse_rename_missing_close_bracket);
-    RUN_TEST(test_parse_rename_missing_open_paren);
-    RUN_TEST(test_parse_rename_missing_expression);
-    RUN_TEST(test_parse_rename_missing_close_paren);
+    RUN_TEST(test_parse_rename_nested_project);
+    RUN_TEST(test_parse_rename_missing_bracket);
+    RUN_TEST(test_parse_rename_empty_identifier);
+    RUN_TEST(test_parse_rename_missing_closing_bracket);
+    RUN_TEST(test_parse_rename_missing_parenthesis);
+    RUN_TEST(test_parse_rename_missing_closing_parenthesis);
 
     RUN_TEST(test_parse_union);
     RUN_TEST(test_parse_intersect);
     RUN_TEST(test_parse_minus);
     RUN_TEST(test_parse_times);
+
     RUN_TEST(test_parse_join);
-    RUN_TEST(test_parse_join_missing_open_bracket);
-    RUN_TEST(test_parse_join_missing_condition);
-    RUN_TEST(test_parse_join_missing_close_bracket);
+    RUN_TEST(test_parse_join_complex_condition);
+    RUN_TEST(test_parse_join_qualified_attributes);
+    RUN_TEST(test_parse_join_missing_bracket);
+    RUN_TEST(test_parse_join_empty_condition);
+    RUN_TEST(test_parse_join_missing_closing_bracket);
     RUN_TEST(test_parse_join_missing_right_expression);
+    RUN_TEST(test_parse_join_dangling_condition_operator);
+
+    RUN_TEST(test_parse_binary_left_associativity);
+    RUN_TEST(test_parse_binary_precedence);
+    RUN_TEST(test_parse_unary_binary_precedence);
+    RUN_TEST(test_parse_parentheses_override_precedence);
+
+    RUN_TEST(test_parse_relation_definition);
+    RUN_TEST(test_parse_relation_definition_multiple_tuples);
+    RUN_TEST(test_parse_relation_definition_single_attribute);
+    RUN_TEST(test_parse_relation_definition_tuple_values);
+    RUN_TEST(test_parse_relation_definition_keyword_attribute);
+    RUN_TEST(test_parse_relation_definition_keyword_relation_name);
+    RUN_TEST(test_parse_relation_definition_missing_open_paren);
+    RUN_TEST(test_parse_relation_definition_missing_attribute);
+    RUN_TEST(test_parse_relation_definition_missing_comma);
+    RUN_TEST(test_parse_relation_definition_missing_close_paren);
+    RUN_TEST(test_parse_relation_definition_missing_equals);
+    RUN_TEST(test_parse_relation_definition_missing_open_brace);
+    RUN_TEST(test_parse_relation_definition_missing_close_brace);
+    RUN_TEST(test_parse_relation_definition_invalid_attribute);
+    RUN_TEST(test_parse_relation_definition_empty_attribute_list);
+    RUN_TEST(test_parse_relation_definition_missing_value);
+    RUN_TEST(test_parse_relation_definition_too_few_values);
+    RUN_TEST(test_parse_relation_definition_too_many_values);
+    RUN_TEST(test_parse_identifier_expression_not_relation_definition);
+    RUN_TEST(test_parse_relation_definition_dispatch);
 
     return UNITY_END();
 }

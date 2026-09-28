@@ -1114,9 +1114,430 @@ static TreeNode *parse_condition(Parser *parser)
 	return parse_or_expression(parser);
 }
 
-static TreeNode* parse_relation_definition(Parser *parser)
+static TreeNode *parse_relation_definition_attribute_list(
+		Parser *parser, size_t *attribute_count)
 {
-	return false;
+	Token *token = peek(parser);
+
+	if (token == NULL)
+	{
+		SYNTAX_ERR("Incomplete relation definition at end of input: expected attribute");
+		parser->has_error = true;
+		return NULL;
+	}
+
+	if (check(parser, RPAREN))
+	{
+		SYNTAX_ERR("Expected attribute at %d:%d (got ')')", token->pos.row, token->pos.col);
+		parser->has_error = true;
+		return NULL;
+	}
+
+	if (token->category != WORD)
+	{
+		SYNTAX_ERR("Expected attribute at %d:%d (got '%.*s')", token->pos.row, token->pos.col, (int)token->lexeme_length, token->lexeme_start);
+		parser->has_error = true;
+		return NULL;
+	}
+
+	size_t count = 1;
+	size_t lookahead = parser->cur_pos + 1;
+
+	while (lookahead < parser->token_count)
+	{
+		token = (Token *)parser->token_arena->base + lookahead;
+
+		if (token->category != COMMA)
+			break;
+
+		lookahead++;
+
+		if (lookahead >= parser->token_count)
+		{
+			SYNTAX_ERR(
+					"Incomplete relation definition at end of input: "
+					"expected attribute after ','");
+			parser->has_error = true;
+			return NULL;
+		}
+
+		token = (Token *)parser->token_arena->base + lookahead;
+
+		if (token->category != WORD)
+		{
+			SYNTAX_ERR("Expected attribute after ',' at %d:%d "
+					"(got '%.*s')",
+					token->pos.row,
+					token->pos.col,
+					(int)token->lexeme_length,
+					token->lexeme_start);
+			parser->has_error = true;
+			return NULL;
+		}
+
+		count++;
+		lookahead++;
+	}
+
+	TreeNode *attributes = tree_node_create(
+			parser->node_arena,
+			count,
+			NULL,
+			NULL,
+			NULL);
+
+	for (size_t i = 0; i < count; i++)
+	{
+		token = peek(parser);
+
+		 // Attributes are identifiers even when their spelling matches a keyword.
+		token->category = IDENT;
+		attributes->token_arr[i] = advance(parser);
+
+		if (i + 1 < count)
+			advance(parser); /* ',' */
+	}
+
+	if (!check(parser, RPAREN))
+	{
+		token = peek(parser);
+
+		if (token == NULL)
+		{
+			SYNTAX_ERR("Incomplete relation definition at end of input: expected ')'");
+		}
+		else
+		{
+			SYNTAX_ERR("Expected ')' after relation attributes at %d:%d (got '%.*s')", token->pos.row, token->pos.col, (int)token->lexeme_length, token->lexeme_start);
+		}
+
+		parser->has_error = true;
+		return NULL;
+	}
+
+	advance(parser); /* ')' */
+
+	*attribute_count = count;
+
+	return attributes;
+}
+static TreeNode *parse_relation_definition_tuple(
+		Parser *parser, size_t attribute_count)
+{
+	TreeNode *tuple = tree_node_create(
+			parser->node_arena,
+			attribute_count + 1,
+			NULL,
+			NULL,
+			NULL
+			);
+
+	Token *tuple_token = token_new(parser->node_arena);
+	*tuple_token = (Token){
+		.category = TUPLE,
+		.lexeme_start = "TUPLE",
+		.lexeme_length = 5,
+		.pos = {0, 0}
+	};
+
+	tuple->token_arr[0] = tuple_token;
+
+	for (size_t i = 0; i < attribute_count; i++)
+	{
+		Token *token = peek(parser);
+
+		if (token == NULL)
+		{
+			SYNTAX_ERR(
+					"Incomplete tuple at end of input: expected value");
+			parser->has_error = true;
+			return tuple;
+		}
+
+		if (token->category != WORD &&
+				token->category != NUMBER &&
+				token->category != STRING)
+		{
+			SYNTAX_ERR("Expected tuple value at %d:%d (got '%.*s')",
+					token->pos.row,
+					token->pos.col,
+					(int)token->lexeme_length,
+					token->lexeme_start);
+			parser->has_error = true;
+			return tuple;
+		}
+
+		tuple->token_arr[i + 1] = advance(parser);
+
+		if (i + 1 < attribute_count)
+		{
+			if (!check(parser, COMMA))
+			{
+				token = peek(parser);
+
+				if (token == NULL)
+				{
+					SYNTAX_ERR(
+							"Incomplete tuple at end of input: "
+							"expected ',' and another value");
+				}
+				else
+				{
+					SYNTAX_ERR(
+							"Expected ',' between tuple values at %d:%d "
+							"(got '%.*s')",
+							token->pos.row,
+							token->pos.col,
+							(int)token->lexeme_length,
+							token->lexeme_start);
+				}
+
+				parser->has_error = true;
+				return tuple;
+			}
+
+			advance(parser); /* ',' */
+		}
+	}
+
+	/*
+	 * If another comma follows the expected number of values, then
+	 * this tuple contains too many values.
+	 */
+	if (check(parser, COMMA))
+	{
+		Token *token = peek(parser);
+
+		SYNTAX_ERR("Too many values in tuple at %d:%d",
+				token->pos.row,
+				token->pos.col);
+		parser->has_error = true;
+		return tuple;
+	}
+
+	return tuple;
+}
+
+static TreeNode *parse_relation_definition_tuple_list(
+		Parser *parser, size_t attribute_count)
+{
+	if (!check(parser, LBRACE))
+	{
+		Token *token = peek(parser);
+
+		if (token == NULL)
+		{
+			SYNTAX_ERR(
+					"Incomplete relation definition at end of input: "
+					"expected '{'");
+		}
+		else
+		{
+			SYNTAX_ERR("Expected '{' after '=' at %d:%d (got '%.*s')",
+					token->pos.row,
+					token->pos.col,
+					(int)token->lexeme_length,
+					token->lexeme_start);
+		}
+
+		parser->has_error = true;
+		return NULL;
+	}
+
+	advance(parser); /* '{' */
+
+	while (check(parser, NEWLINE))
+	{
+		advance(parser);
+	}
+
+	if (check(parser, RBRACE))
+	{
+		Token *token = peek(parser);
+
+		SYNTAX_ERR("Expected tuple at %d:%d (got '}')",
+				token->pos.row,
+				token->pos.col);
+		parser->has_error = true;
+		return NULL;
+	}
+
+	TreeNode *tuple_list = NULL;
+	TreeNode *last_tuple = NULL;
+
+	while (peek(parser) != NULL && !check(parser, RBRACE))
+	{
+		TreeNode *tuple =
+			parse_relation_definition_tuple(parser, attribute_count);
+
+		if (tuple == NULL)
+		{
+			return tuple_list;
+		}
+
+		if (tuple_list == NULL)
+		{
+			tuple_list = tuple;
+		}
+		else
+		{
+			last_tuple->left_child = tuple;
+			tuple->parent = last_tuple;
+		}
+
+		last_tuple = tuple;
+
+		while (check(parser, NEWLINE))
+		{
+			advance(parser);
+		}
+
+		if (check(parser, RBRACE))
+		{
+			break;
+		}
+
+		/*
+		 * Each tuple must be separated from the next tuple.
+		 * A newline is the normal separator; if there was no
+		 * newline, this is an invalid tuple boundary.
+		 */
+		if (!check(parser, NEWLINE))
+		{
+			Token *token = peek(parser);
+
+			SYNTAX_ERR("Expected end of tuple or '}' at %d:%d "
+					"(got '%.*s')",
+					token->pos.row,
+					token->pos.col,
+					(int)token->lexeme_length,
+					token->lexeme_start);
+			parser->has_error = true;
+			return tuple_list;
+		}
+	}
+
+	if (!check(parser, RBRACE))
+	{
+		SYNTAX_ERR("Expected '}' at end of input");
+		parser->has_error = true;
+		return tuple_list;
+	}
+
+	advance(parser); /* '}' */
+
+	return tuple_list;
+}
+
+static TreeNode *parse_relation_definition(Parser *parser)
+{
+	Token *relation_token = advance(parser);
+	relation_token->category = IDENT;
+
+	advance(parser); /* '(' */
+
+	size_t attribute_count = 0;
+
+	TreeNode *attributes = parse_relation_definition_attribute_list(parser, &attribute_count);
+
+	/*
+	 * We do not have an '=' node yet, so the best partial tree we
+	 * can return is the relation definition itself.
+	 */
+	if (attributes == NULL)
+	{
+		return NULL;
+	}
+
+	Token *definition_token = token_new(parser->node_arena);
+	*definition_token = (Token){
+		.category = RELATION_DEFINITION,
+		.lexeme_start = "RELATION_DEFINITION",
+		.lexeme_length = 19,
+		.pos = {0, 0}
+	};
+
+	TreeNode *definition_node = tree_node_create(
+			parser->node_arena,
+			1,
+			NULL,
+			NULL,
+			NULL
+			);
+
+	definition_node->token_arr[0] = definition_token;
+
+	TreeNode *relation_node = tree_node_create(
+			parser->node_arena,
+			1,
+			NULL,
+			NULL,
+			NULL
+			);
+
+	relation_node->token_arr[0] = relation_token;
+
+	definition_node->left_child = relation_node;
+	definition_node->right_child = attributes;
+
+	relation_node->parent = definition_node;
+	attributes->parent = definition_node;
+
+	if (!check(parser, EQUAL))
+	{
+		Token *token = peek(parser);
+
+		if (token == NULL)
+		{
+			SYNTAX_ERR(
+					"Incomplete relation definition at end of input: "
+					"expected '='");
+		}
+		else
+		{
+			SYNTAX_ERR("Expected '=' after relation definition at %d:%d "
+					"(got '%.*s')",
+					token->pos.row,
+					token->pos.col,
+					(int)token->lexeme_length,
+					token->lexeme_start);
+		}
+
+		parser->has_error = true;
+		return definition_node;
+	}
+
+	Token *equals_token = advance(parser);
+
+	TreeNode *equals_node = tree_node_create(
+			parser->node_arena,
+			1,
+			NULL,
+			definition_node,
+			NULL
+			);
+
+	equals_node->token_arr[0] = equals_token;
+
+	definition_node->parent = equals_node;
+
+	TreeNode *tuple_list =
+		parse_relation_definition_tuple_list(
+				parser,
+				attribute_count);
+
+	/*
+	 * Once '=' has been consumed, the '=' node is the statement
+	 * root, even when parsing the tuple list reports an error.
+	 */
+	equals_node->right_child = tuple_list;
+
+	if (tuple_list != NULL)
+	{
+		tuple_list->parent = equals_node;
+	}
+
+	return equals_node;
 }
 
 static TreeNode *parse_statement(Parser *parser)

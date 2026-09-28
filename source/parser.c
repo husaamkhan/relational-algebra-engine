@@ -1114,7 +1114,7 @@ static TreeNode *parse_condition(Parser *parser)
 	return parse_or_expression(parser);
 }
 
-static bool *parse_relation_definition(Parser *parser)
+static TreeNode* parse_relation_definition(Parser *parser)
 {
 	return false;
 }

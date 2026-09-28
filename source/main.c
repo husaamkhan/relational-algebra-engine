@@ -6,28 +6,27 @@
 
 int main(int argc, char **argv)
 {
-	if (argc != 2)
+	FILE *in = stdin;
+
+	if (argc > 2)
 	{
-		LOG_ERR("Usage: %s <query-file>", argv[0]);
+		LOG_ERR("Usage: %s [query-file]", argv[0]);
 		return -1;
 	}
 
-	FILE *in = fopen(argv[1], "rb");
-	if (in == NULL)
+	if (argc == 2)
 	{
-		LOG_ERR("Could not open file '%s'", argv[1]);
-		return -1;
+		in = fopen(argv[1], "rb");
+
+		if (in == NULL)
+		{
+			LOG_ERR("Could not open file '%s'", argv[1]);
+			return -1;
+		}
 	}
 
 	size_t file_size = 0;
 	char *file_contents = read_file(in, &file_size);
-	fclose(in);
-
-	if (file_contents == NULL)
-	{
-		LOG_ERR("Could not read file '%s'", argv[1]);
-		return -1;
-	}
 
 	Lexer lexer;
 	lexer_init(&lexer, file_contents, file_size);

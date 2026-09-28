@@ -94,12 +94,13 @@ static bool check(Parser *parser, Category category)
 
 void parser_init(Parser *parser, Arena *token_arena, size_t token_count, Arena *node_arena)
 {
-	parser->token_arena  = token_arena;
-	parser->token_count  = token_count;
-	parser->cur_pos      = 0;
-	parser->node_arena   = node_arena;
-	parser->cur_token    = (Token *)token_arena->base;
-	parser->has_error    = false;
+	parser->token_arena = token_arena;
+	parser->token_count = token_count;
+	parser->cur_pos = 0;
+	parser->node_arena = node_arena;
+	parser->cur_token = (Token *)token_arena->base;
+	parser->has_error = false;
+	parser->statement_has_error = false;
 }
 
 static TreeNode *parse_rename(Parser *parser)
@@ -121,10 +122,19 @@ static TreeNode *parse_rename(Parser *parser)
 	{
 		Token *token = peek(parser);
 
-		if (token == NULL) SYNTAX_ERR("Incomplete rename expression at end of input: expected '[' identifier ']' and relation expression");
-		else SYNTAX_ERR("Expected '[' after 'rename' at %d:%d", token->pos.row, token->pos.col);
+		if (token == NULL)
+		{
+			SYNTAX_ERR("Incomplete rename expression at end of input: expected '[' identifier ']' and relation expression");
+		}
+		else
+		{
+			SYNTAX_ERR("Expected '[' after 'rename' at %d:%d",
+					token->pos.row,
+					token->pos.col);
+		}
 
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return node;
 	}
 
@@ -136,6 +146,7 @@ static TreeNode *parse_rename(Parser *parser)
 	{
 		SYNTAX_ERR("Incomplete rename expression at end of input: expected identifier and closing ']'");
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return node;
 	}
 
@@ -147,6 +158,7 @@ static TreeNode *parse_rename(Parser *parser)
 				(int)name->lexeme_length,
 				name->lexeme_start);
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return node;
 	}
 
@@ -166,10 +178,21 @@ static TreeNode *parse_rename(Parser *parser)
 	{
 		Token *token = peek(parser);
 
-		if (token == NULL) SYNTAX_ERR("Incomplete rename expression at end of input: expected ']' and relation expression");
-		else SYNTAX_ERR("Expected ']' after rename identifier at %d:%d (got '%.*s')", token->pos.row, token->pos.col, (int)token->lexeme_length, token->lexeme_start);
+		if (token == NULL)
+		{
+			SYNTAX_ERR("Incomplete rename expression at end of input: expected ']' and relation expression");
+		}
+		else
+		{
+			SYNTAX_ERR("Expected ']' after rename identifier at %d:%d (got '%.*s')",
+					token->pos.row,
+					token->pos.col,
+					(int)token->lexeme_length,
+					token->lexeme_start);
+		}
 
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return node;
 	}
 
@@ -179,10 +202,19 @@ static TreeNode *parse_rename(Parser *parser)
 	{
 		Token *token = peek(parser);
 
-		if (token == NULL) SYNTAX_ERR("Incomplete rename expression at end of input: expected '(' and relation expression");
-		else SYNTAX_ERR("Expected '(' after rename identifier at %d:%d", token->pos.row, token->pos.col);
+		if (token == NULL)
+		{
+			SYNTAX_ERR("Incomplete rename expression at end of input: expected '(' and relation expression");
+		}
+		else
+		{
+			SYNTAX_ERR("Expected '(' after rename identifier at %d:%d",
+					token->pos.row,
+					token->pos.col);
+		}
 
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return node;
 	}
 
@@ -199,10 +231,21 @@ static TreeNode *parse_rename(Parser *parser)
 	{
 		Token *token = peek(parser);
 
-		if (token == NULL) SYNTAX_ERR("Incomplete rename expression at end of input: expected ')'");
-		else SYNTAX_ERR("Expected ')' at %d:%d (got '%.*s')", token->pos.row, token->pos.col, (int)token->lexeme_length, token->lexeme_start);
+		if (token == NULL)
+		{
+			SYNTAX_ERR("Incomplete rename expression at end of input: expected ')'");
+		}
+		else
+		{
+			SYNTAX_ERR("Expected ')' at %d:%d (got '%.*s')",
+					token->pos.row,
+					token->pos.col,
+					(int)token->lexeme_length,
+					token->lexeme_start);
+		}
 
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return node;
 	}
 
@@ -236,10 +279,19 @@ static TreeNode *parse_project(Parser *parser)
 	{
 		Token *token = peek(parser);
 
-		if (token == NULL) SYNTAX_ERR("Incomplete project expression at end of input: expected '[' attribute list ']' and relation expression");
-		else SYNTAX_ERR("Expected '[' after 'project' at %d:%d", token->pos.row, token->pos.col);
+		if (token == NULL)
+		{
+			SYNTAX_ERR("Incomplete project expression at end of input: expected '[' attribute list ']' and relation expression");
+		}
+		else
+		{
+			SYNTAX_ERR("Expected '[' after 'project' at %d:%d",
+					token->pos.row,
+					token->pos.col);
+		}
 
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return node;
 	}
 
@@ -251,6 +303,7 @@ static TreeNode *parse_project(Parser *parser)
 	{
 		SYNTAX_ERR("Incomplete project expression at end of input: expected attribute name and closing ']'");
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return node;
 	}
 
@@ -262,13 +315,10 @@ static TreeNode *parse_project(Parser *parser)
 				(int)token->lexeme_length,
 				token->lexeme_start);
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return node;
 	}
 
-	/*
-	 * Count the attributes first so that the attribute node can
-	 * contain exactly one token pointer for each attribute.
-	 */
 	size_t attribute_count = 1;
 	size_t lookahead = parser->cur_pos + 1;
 
@@ -287,6 +337,7 @@ static TreeNode *parse_project(Parser *parser)
 		{
 			SYNTAX_ERR("Incomplete project expression at end of input: expected attribute name and closing ']'");
 			parser->has_error = true;
+			parser->statement_has_error = true;
 			return node;
 		}
 
@@ -300,6 +351,7 @@ static TreeNode *parse_project(Parser *parser)
 					(int)token->lexeme_length,
 					token->lexeme_start);
 			parser->has_error = true;
+			parser->statement_has_error = true;
 			return node;
 		}
 
@@ -307,7 +359,7 @@ static TreeNode *parse_project(Parser *parser)
 		lookahead++;
 	}
 
-	TreeNode *attributes = tree_node_create(
+	TreeNode *attributes_node = tree_node_create(
 			parser->node_arena,
 			attribute_count,
 			NULL,
@@ -320,7 +372,7 @@ static TreeNode *parse_project(Parser *parser)
 		token = peek(parser);
 
 		token->category = IDENT;
-		attributes->token_arr[i] = advance(parser);
+		attributes_node->token_arr[i] = advance(parser);
 
 		if (i + 1 < attribute_count)
 		{
@@ -332,10 +384,21 @@ static TreeNode *parse_project(Parser *parser)
 	{
 		token = peek(parser);
 
-		if (token == NULL) SYNTAX_ERR("Incomplete project expression at end of input: expected ']'");
-		else SYNTAX_ERR("Expected ']' after project attributes at %d:%d (got '%.*s')", token->pos.row, token->pos.col, (int)token->lexeme_length, token->lexeme_start);
+		if (token == NULL)
+		{
+			SYNTAX_ERR("Incomplete project expression at end of input: expected ']'");
+		}
+		else
+		{
+			SYNTAX_ERR("Expected ']' after project attributes at %d:%d (got '%.*s')",
+					token->pos.row,
+					token->pos.col,
+					(int)token->lexeme_length,
+					token->lexeme_start);
+		}
 
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return node;
 	}
 
@@ -345,10 +408,19 @@ static TreeNode *parse_project(Parser *parser)
 	{
 		token = peek(parser);
 
-		if (token == NULL) SYNTAX_ERR("Incomplete project expression at end of input: expected '(' and relation expression");
-		else SYNTAX_ERR("Expected '(' after project attributes at %d:%d", token->pos.row, token->pos.col);
+		if (token == NULL)
+		{
+			SYNTAX_ERR("Incomplete project expression at end of input: expected '(' and relation expression");
+		}
+		else
+		{
+			SYNTAX_ERR("Expected '(' after project attributes at %d:%d",
+					token->pos.row,
+					token->pos.col);
+		}
 
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return node;
 	}
 
@@ -365,19 +437,30 @@ static TreeNode *parse_project(Parser *parser)
 	{
 		token = peek(parser);
 
-		if (token == NULL) SYNTAX_ERR("Incomplete project expression at end of input: expected ')'");
-		else SYNTAX_ERR("Expected ')' at %d:%d (got '%.*s')", token->pos.row, token->pos.col, (int)token->lexeme_length, token->lexeme_start);
+		if (token == NULL)
+		{
+			SYNTAX_ERR("Incomplete project expression at end of input: expected ')'");
+		}
+		else
+		{
+			SYNTAX_ERR("Expected ')' at %d:%d (got '%.*s')",
+					token->pos.row,
+					token->pos.col,
+					(int)token->lexeme_length,
+					token->lexeme_start);
+		}
 
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return node;
 	}
 
 	advance(parser); /* ')' */
 
-	node->left_child = attributes;
+	node->left_child = attributes_node;
 	node->right_child = expression;
 
-	attributes->parent = node;
+	attributes_node->parent = node;
 	expression->parent = node;
 
 	return node;
@@ -402,14 +485,23 @@ static TreeNode *parse_select(Parser *parser)
 	{
 		Token *token = peek(parser);
 
-		if (token == NULL) SYNTAX_ERR("Incomplete select expression at end of input: expected '[' condition ']' and relation expression");
-		else SYNTAX_ERR("Expected '[' after 'select' at %d:%d", token->pos.row, token->pos.col);
+		if (token == NULL)
+		{
+			SYNTAX_ERR("Incomplete select expression at end of input: expected '[' condition ']' and relation expression");
+		}
+		else
+		{
+			SYNTAX_ERR("Expected '[' after 'select' at %d:%d",
+					token->pos.row,
+					token->pos.col);
+		}
 
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return node;
 	}
 
-	advance(parser);
+	advance(parser); /* '[' */
 
 	TreeNode *condition = parse_condition(parser);
 
@@ -436,10 +528,11 @@ static TreeNode *parse_select(Parser *parser)
 		}
 
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return node;
 	}
 
-	advance(parser);
+	advance(parser); /* ']' */
 
 	if (!check(parser, LPAREN))
 	{
@@ -457,10 +550,11 @@ static TreeNode *parse_select(Parser *parser)
 		}
 
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return node;
 	}
 
-	advance(parser);
+	advance(parser); /* '(' */
 
 	TreeNode *expression = parse_additive_expression(parser);
 
@@ -487,10 +581,11 @@ static TreeNode *parse_select(Parser *parser)
 		}
 
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return node;
 	}
 
-	advance(parser);
+	advance(parser); /* ')' */
 
 	node->left_child = condition;
 	node->right_child = expression;
@@ -509,6 +604,7 @@ static TreeNode *parse_atom_expression(Parser *parser)
 	{
 		SYNTAX_ERR("Expected expression at end of input");
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return NULL;
 	}
 
@@ -536,6 +632,7 @@ static TreeNode *parse_atom_expression(Parser *parser)
 			}
 
 			parser->has_error = true;
+			parser->statement_has_error = true;
 			return node;
 		}
 
@@ -567,6 +664,7 @@ static TreeNode *parse_atom_expression(Parser *parser)
 			(int)token->lexeme_length,
 			token->lexeme_start);
 	parser->has_error = true;
+	parser->statement_has_error = true;
 	return NULL;
 }
 
@@ -621,6 +719,7 @@ static TreeNode *parse_join(Parser *parser, TreeNode *left)
 		}
 
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return NULL;
 	}
 
@@ -651,6 +750,7 @@ static TreeNode *parse_join(Parser *parser, TreeNode *left)
 		}
 
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return NULL;
 	}
 
@@ -662,6 +762,7 @@ static TreeNode *parse_join(Parser *parser, TreeNode *left)
 	{
 		SYNTAX_ERR("Expected identifier at end of input");
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return NULL;
 	}
 
@@ -820,6 +921,7 @@ static TreeNode *parse_additive_expression(Parser *parser)
 
 	return left;
 }
+
 static TreeNode *parse_operand(Parser *parser)
 {
 	Token *token = peek(parser);
@@ -828,6 +930,7 @@ static TreeNode *parse_operand(Parser *parser)
 	{
 		SYNTAX_ERR("Expected operand at end of input");
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return NULL;
 	}
 
@@ -861,6 +964,7 @@ static TreeNode *parse_operand(Parser *parser)
 			{
 				SYNTAX_ERR("Expected identifier after '.' at end of input");
 				parser->has_error = true;
+				parser->statement_has_error = true;
 				return NULL;
 			}
 
@@ -872,6 +976,7 @@ static TreeNode *parse_operand(Parser *parser)
 						(int)second->lexeme_length,
 						second->lexeme_start);
 				parser->has_error = true;
+				parser->statement_has_error = true;
 				return NULL;
 			}
 
@@ -911,6 +1016,7 @@ static TreeNode *parse_operand(Parser *parser)
 			(int)token->lexeme_length,
 			token->lexeme_start);
 	parser->has_error = true;
+	parser->statement_has_error = true;
 	return NULL;
 }
 
@@ -947,6 +1053,7 @@ static TreeNode *parse_comparison(Parser *parser)
 		}
 
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return left;
 	}
 
@@ -1027,6 +1134,7 @@ static TreeNode *parse_not_expression(Parser *parser)
 			}
 
 			parser->has_error = true;
+			parser->statement_has_error = true;
 			return node;
 		}
 
@@ -1072,6 +1180,7 @@ static TreeNode *parse_and_expression(Parser *parser)
 
 	return left;
 }
+
 static TreeNode *parse_or_expression(Parser *parser)
 {
 	TreeNode *left = parse_and_expression(parser);
@@ -1123,20 +1232,29 @@ static TreeNode *parse_relation_definition_attribute_list(
 	{
 		SYNTAX_ERR("Incomplete relation definition at end of input: expected attribute");
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return NULL;
 	}
 
 	if (check(parser, RPAREN))
 	{
-		SYNTAX_ERR("Expected attribute at %d:%d (got ')')", token->pos.row, token->pos.col);
+		SYNTAX_ERR("Expected attribute at %d:%d (got ')')",
+				token->pos.row,
+				token->pos.col);
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return NULL;
 	}
 
 	if (token->category != WORD)
 	{
-		SYNTAX_ERR("Expected attribute at %d:%d (got '%.*s')", token->pos.row, token->pos.col, (int)token->lexeme_length, token->lexeme_start);
+		SYNTAX_ERR("Expected attribute at %d:%d (got '%.*s')",
+				token->pos.row,
+				token->pos.col,
+				(int)token->lexeme_length,
+				token->lexeme_start);
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return NULL;
 	}
 
@@ -1148,16 +1266,17 @@ static TreeNode *parse_relation_definition_attribute_list(
 		token = (Token *)parser->token_arena->base + lookahead;
 
 		if (token->category != COMMA)
+		{
 			break;
+		}
 
 		lookahead++;
 
 		if (lookahead >= parser->token_count)
 		{
-			SYNTAX_ERR(
-					"Incomplete relation definition at end of input: "
-					"expected attribute after ','");
+			SYNTAX_ERR("Incomplete relation definition at end of input: expected attribute after ','");
 			parser->has_error = true;
+			parser->statement_has_error = true;
 			return NULL;
 		}
 
@@ -1165,13 +1284,13 @@ static TreeNode *parse_relation_definition_attribute_list(
 
 		if (token->category != WORD)
 		{
-			SYNTAX_ERR("Expected attribute after ',' at %d:%d "
-					"(got '%.*s')",
+			SYNTAX_ERR("Expected attribute after ',' at %d:%d (got '%.*s')",
 					token->pos.row,
 					token->pos.col,
 					(int)token->lexeme_length,
 					token->lexeme_start);
 			parser->has_error = true;
+			parser->statement_has_error = true;
 			return NULL;
 		}
 
@@ -1179,23 +1298,26 @@ static TreeNode *parse_relation_definition_attribute_list(
 		lookahead++;
 	}
 
-	TreeNode *attributes = tree_node_create(
+	TreeNode *attributes_node = tree_node_create(
 			parser->node_arena,
 			count,
 			NULL,
 			NULL,
-			NULL);
+			NULL
+			);
 
 	for (size_t i = 0; i < count; i++)
 	{
 		token = peek(parser);
 
-		 // Attributes are identifiers even when their spelling matches a keyword.
+		/* Attributes are identifiers even when their spelling matches a keyword. */
 		token->category = IDENT;
-		attributes->token_arr[i] = advance(parser);
+		attributes_node->token_arr[i] = advance(parser);
 
 		if (i + 1 < count)
+		{
 			advance(parser); /* ',' */
+		}
 	}
 
 	if (!check(parser, RPAREN))
@@ -1208,10 +1330,15 @@ static TreeNode *parse_relation_definition_attribute_list(
 		}
 		else
 		{
-			SYNTAX_ERR("Expected ')' after relation attributes at %d:%d (got '%.*s')", token->pos.row, token->pos.col, (int)token->lexeme_length, token->lexeme_start);
+			SYNTAX_ERR("Expected ')' after relation attributes at %d:%d (got '%.*s')",
+					token->pos.row,
+					token->pos.col,
+					(int)token->lexeme_length,
+					token->lexeme_start);
 		}
 
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return NULL;
 	}
 
@@ -1219,8 +1346,9 @@ static TreeNode *parse_relation_definition_attribute_list(
 
 	*attribute_count = count;
 
-	return attributes;
+	return attributes_node;
 }
+
 static TreeNode *parse_relation_definition_tuple(
 		Parser *parser, size_t attribute_count)
 {
@@ -1235,8 +1363,8 @@ static TreeNode *parse_relation_definition_tuple(
 	Token *tuple_token = token_new(parser->node_arena);
 	*tuple_token = (Token){
 		.category = TUPLE,
-		.lexeme_start = "TUPLE",
-		.lexeme_length = 5,
+		.lexeme_start = NULL,
+		.lexeme_length = 0,
 		.pos = {0, 0}
 	};
 
@@ -1248,9 +1376,9 @@ static TreeNode *parse_relation_definition_tuple(
 
 		if (token == NULL)
 		{
-			SYNTAX_ERR(
-					"Incomplete tuple at end of input: expected value");
+			SYNTAX_ERR("Incomplete tuple at end of input: expected value");
 			parser->has_error = true;
+			parser->statement_has_error = true;
 			return tuple;
 		}
 
@@ -1264,6 +1392,7 @@ static TreeNode *parse_relation_definition_tuple(
 					(int)token->lexeme_length,
 					token->lexeme_start);
 			parser->has_error = true;
+			parser->statement_has_error = true;
 			return tuple;
 		}
 
@@ -1277,15 +1406,13 @@ static TreeNode *parse_relation_definition_tuple(
 
 				if (token == NULL)
 				{
-					SYNTAX_ERR(
-							"Incomplete tuple at end of input: "
-							"expected ',' and another value");
+					SYNTAX_ERR("Incomplete tuple: expected %zu values, got %zu",
+							attribute_count,
+							i + 1);
 				}
 				else
 				{
-					SYNTAX_ERR(
-							"Expected ',' between tuple values at %d:%d "
-							"(got '%.*s')",
+					SYNTAX_ERR("Expected ',' between tuple values at %d:%d (got '%.*s')",
 							token->pos.row,
 							token->pos.col,
 							(int)token->lexeme_length,
@@ -1293,6 +1420,7 @@ static TreeNode *parse_relation_definition_tuple(
 				}
 
 				parser->has_error = true;
+				parser->statement_has_error = true;
 				return tuple;
 			}
 
@@ -1312,6 +1440,7 @@ static TreeNode *parse_relation_definition_tuple(
 				token->pos.row,
 				token->pos.col);
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return tuple;
 	}
 
@@ -1327,9 +1456,7 @@ static TreeNode *parse_relation_definition_tuple_list(
 
 		if (token == NULL)
 		{
-			SYNTAX_ERR(
-					"Incomplete relation definition at end of input: "
-					"expected '{'");
+			SYNTAX_ERR("Incomplete relation definition at end of input: expected '{'");
 		}
 		else
 		{
@@ -1341,6 +1468,7 @@ static TreeNode *parse_relation_definition_tuple_list(
 		}
 
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return NULL;
 	}
 
@@ -1353,12 +1481,7 @@ static TreeNode *parse_relation_definition_tuple_list(
 
 	if (check(parser, RBRACE))
 	{
-		Token *token = peek(parser);
-
-		SYNTAX_ERR("Expected tuple at %d:%d (got '}')",
-				token->pos.row,
-				token->pos.col);
-		parser->has_error = true;
+		advance(parser);
 		return NULL;
 	}
 
@@ -1367,8 +1490,9 @@ static TreeNode *parse_relation_definition_tuple_list(
 
 	while (peek(parser) != NULL && !check(parser, RBRACE))
 	{
-		TreeNode *tuple =
-			parse_relation_definition_tuple(parser, attribute_count);
+		TreeNode *tuple = parse_relation_definition_tuple(
+				parser,
+				attribute_count);
 
 		if (tuple == NULL)
 		{
@@ -1387,9 +1511,12 @@ static TreeNode *parse_relation_definition_tuple_list(
 
 		last_tuple = tuple;
 
+		bool had_newline = false;
+
 		while (check(parser, NEWLINE))
 		{
 			advance(parser);
+			had_newline = true;
 		}
 
 		if (check(parser, RBRACE))
@@ -1399,28 +1526,28 @@ static TreeNode *parse_relation_definition_tuple_list(
 
 		/*
 		 * Each tuple must be separated from the next tuple.
-		 * A newline is the normal separator; if there was no
-		 * newline, this is an invalid tuple boundary.
+		 * A newline is the separator between tuples.
 		 */
-		if (!check(parser, NEWLINE))
+		if (!had_newline)
 		{
 			Token *token = peek(parser);
 
-			SYNTAX_ERR("Expected end of tuple or '}' at %d:%d "
-					"(got '%.*s')",
+			SYNTAX_ERR("Expected newline between relation definition tuples at %d:%d (got '%.*s')",
 					token->pos.row,
 					token->pos.col,
 					(int)token->lexeme_length,
 					token->lexeme_start);
 			parser->has_error = true;
+			parser->statement_has_error = true;
 			return tuple_list;
 		}
 	}
 
 	if (!check(parser, RBRACE))
 	{
-		SYNTAX_ERR("Expected '}' at end of input");
+		SYNTAX_ERR("Expected '}' at end of relation definition tuple list");
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return tuple_list;
 	}
 
@@ -1438,13 +1565,12 @@ static TreeNode *parse_relation_definition(Parser *parser)
 
 	size_t attribute_count = 0;
 
-	TreeNode *attributes = parse_relation_definition_attribute_list(parser, &attribute_count);
+	TreeNode *attributes_node =
+		parse_relation_definition_attribute_list(
+				parser,
+				&attribute_count);
 
-	/*
-	 * We do not have an '=' node yet, so the best partial tree we
-	 * can return is the relation definition itself.
-	 */
-	if (attributes == NULL)
+	if (attributes_node == NULL)
 	{
 		return NULL;
 	}
@@ -1452,8 +1578,8 @@ static TreeNode *parse_relation_definition(Parser *parser)
 	Token *definition_token = token_new(parser->node_arena);
 	*definition_token = (Token){
 		.category = RELATION_DEFINITION,
-		.lexeme_start = "RELATION_DEFINITION",
-		.lexeme_length = 19,
+		.lexeme_start = NULL,
+		.lexeme_length = 0,
 		.pos = {0, 0}
 	};
 
@@ -1478,10 +1604,10 @@ static TreeNode *parse_relation_definition(Parser *parser)
 	relation_node->token_arr[0] = relation_token;
 
 	definition_node->left_child = relation_node;
-	definition_node->right_child = attributes;
+	definition_node->right_child = attributes_node;
 
 	relation_node->parent = definition_node;
-	attributes->parent = definition_node;
+	attributes_node->parent = definition_node;
 
 	if (!check(parser, EQUAL))
 	{
@@ -1489,14 +1615,11 @@ static TreeNode *parse_relation_definition(Parser *parser)
 
 		if (token == NULL)
 		{
-			SYNTAX_ERR(
-					"Incomplete relation definition at end of input: "
-					"expected '='");
+			SYNTAX_ERR("Incomplete relation definition at end of input: expected '='");
 		}
 		else
 		{
-			SYNTAX_ERR("Expected '=' after relation definition at %d:%d "
-					"(got '%.*s')",
+			SYNTAX_ERR("Expected '=' after relation definition at %d:%d (got '%.*s')",
 					token->pos.row,
 					token->pos.col,
 					(int)token->lexeme_length,
@@ -1504,6 +1627,7 @@ static TreeNode *parse_relation_definition(Parser *parser)
 		}
 
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return definition_node;
 	}
 
@@ -1549,8 +1673,7 @@ static TreeNode *parse_statement(Parser *parser)
 		return NULL;
 	}
 
-	if (token->category == WORD &&
-			get_word_category(token) == IDENT)
+	if (token->category == WORD)
 	{
 		Token *next = peek_next(parser);
 
@@ -1568,46 +1691,94 @@ static TreeNode *parse_statement(Parser *parser)
 				(int)token->lexeme_length,
 				token->lexeme_start);
 		parser->has_error = true;
+		parser->statement_has_error = true;
 		return NULL;
 	}
 
 	return parse_additive_expression(parser);
 }
 
+static const char *category_names[] = {
+	[IDENT] = "IDENT",
+	[NUMBER] = "NUMBER",
+	[STRING] = "STRING",
+	[SELECT] = "SELECT",
+	[PROJECT] = "PROJECT",
+	[RENAME] = "RENAME",
+	[UNION] = "UNION",
+	[INTERSECT] = "INTERSECT",
+	[MINUS] = "MINUS",
+	[TIMES] = "TIMES",
+	[JOIN] = "JOIN",
+	[JOIN_RELATIONS] = "JOIN_RELATIONS",
+	[NOT] = "NOT",
+	[AND] = "AND",
+	[OR] = "OR",
+	[RELATION_DEFINITION] = "RELATION_DEFINITION",
+	[TUPLE] = "TUPLE",
+	[LPAREN] = "LPAREN",
+	[RPAREN] = "RPAREN",
+	[LBRACKET] = "LBRACKET",
+	[RBRACKET] = "RBRACKET",
+	[LBRACE] = "LBRACE",
+	[RBRACE] = "RBRACE",
+	[COMMA] = "COMMA",
+	[EQUAL] = "EQUAL",
+	[NEWLINE] = "NEWLINE",
+};
+
 static void print_tree_node(const TreeNode *node, const char *prefix, bool is_last)
 {
-	if (node == NULL)
-	{
-		return;
-	}
+    printf("%s%s", prefix, is_last ? "└── " : "├── ");
 
-	printf("%s%s", prefix, is_last ? "└── " : "├── ");
+    if (node == NULL)
+    {
+        printf("(error)\n");
+        return;
+    }
 
-	for (size_t i = 0; i < node->token_count; i++)
-	{
-		Token *token = node->token_arr[i];
-		printf("%.*s", (int)token->lexeme_length, token->lexeme_start);
-		if (i + 1 < node->token_count)
-		{
-			printf(" ");
-		}
-	}
-	printf("\n");
+    for (size_t i = 0; i < node->token_count; i++)
+    {
+        Token *token = node->token_arr[i];
 
-	char child_prefix[256];
-	snprintf(child_prefix, sizeof(child_prefix), "%s%s", prefix, is_last ? "    " : "│   ");
+        if (token == NULL)
+        {
+            printf("<missing>");
+        }
+        else if (token->lexeme_start == NULL)
+        {
+            printf("<%s>", category_names[token->category]);
+        }
+        else
+        {
+            printf("%.*s",
+                    (int)token->lexeme_length,
+                    token->lexeme_start);
+        }
 
-	bool has_left  = node->left_child != NULL;
-	bool has_right = node->right_child != NULL;
+        if (i + 1 < node->token_count)
+        {
+            printf(" ");
+        }
+    }
 
-	if (has_left)
-	{
-		print_tree_node(node->left_child, child_prefix, !has_right);
-	}
-	if (has_right)
-	{
-		print_tree_node(node->right_child, child_prefix, true);
-	}
+    printf("\n");
+
+    char child_prefix[256];
+    snprintf(child_prefix, sizeof(child_prefix), "%s%s",
+            prefix,
+            is_last ? "    " : "│   ");
+
+    if (node->left_child != NULL)
+    {
+        bool left_is_last = node->right_child == NULL;
+        print_tree_node(node->left_child, child_prefix, left_is_last);
+    }
+
+    if (node->right_child != NULL)
+    {
+        print_tree_node(node->right_child, child_prefix, true);
+    }
 }
 
 void print_tree(const Tree *tree)
@@ -1620,7 +1791,9 @@ void print_tree(const Tree *tree)
 
 	printf("PROGRAM\n");
 
-	for (StatementNode *stmt = tree->head; stmt != NULL; stmt = stmt->next)
+	for (StatementNode *stmt = tree->head;
+			stmt != NULL;
+			stmt = stmt->next)
 	{
 		bool is_last = (stmt->next == NULL);
 
@@ -1641,6 +1814,8 @@ void parse(Parser *parser, Tree *tree)
 
 	while (peek(parser) != NULL)
 	{
+		parser->statement_has_error = false;
+
 		while (check(parser, NEWLINE))
 		{
 			advance(parser);
@@ -1651,19 +1826,32 @@ void parse(Parser *parser, Tree *tree)
 			break;
 		}
 
-		bool error_before = parser->has_error;
 		TreeNode *root = parse_statement(parser);
 
 		Token *next = peek(parser);
-		if (next != NULL && next->category != NEWLINE)
+
+		/*
+		 * Only report an unexpected token here if the parser has not
+		 * already reported a syntax error for this statement.
+		 */
+		if (!parser->statement_has_error &&
+				next != NULL &&
+				next->category != NEWLINE)
 		{
 			SYNTAX_ERR("Expected end of statement at %d:%d (got '%.*s')",
-					next->pos.row, next->pos.col,
-					(int)next->lexeme_length, next->lexeme_start);
+					next->pos.row,
+					next->pos.col,
+					(int)next->lexeme_length,
+					next->lexeme_start);
 			parser->has_error = true;
+			parser->statement_has_error = true;
 		}
 
-		StatementNode *stmt = arena_push(parser->node_arena, sizeof(StatementNode), _Alignof(StatementNode));
+		StatementNode *stmt = arena_push(
+				parser->node_arena,
+				sizeof(StatementNode),
+				_Alignof(StatementNode));
+
 		stmt->root = root;
 		stmt->next = NULL;
 
@@ -1675,12 +1863,13 @@ void parse(Parser *parser, Tree *tree)
 		{
 			tree->tail->next = stmt;
 		}
+
 		tree->tail = stmt;
 
-		bool this_statement_failed = parser->has_error && !error_before;
-		if (this_statement_failed)
+		if (parser->statement_has_error)
 		{
-			while (peek(parser) != NULL && !check(parser, NEWLINE))
+			while (peek(parser) != NULL &&
+					!check(parser, NEWLINE))
 			{
 				advance(parser);
 			}

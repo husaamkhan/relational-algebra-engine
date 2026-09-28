@@ -89,3 +89,6 @@
 -   I found that my AI tool was repeating similar keyword lexeme matching logic to check which parse function to run in different scenarios.
     Replaced this with a get_word_category helper function that returns a category enum based on the tokens lexeme.
 
+## September 28
+-   Implementing relation definitions. Running into a lot of issues due to ai-generated code related to segmentation faults and other bugs,
+    code that didn't match the unit tests' expectations, etc.

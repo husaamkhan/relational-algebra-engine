@@ -16,6 +16,7 @@ typedef struct
 	Arena *node_arena;
 
 	bool has_error;
+	bool statement_has_error;
 } Parser;
 
 void parser_init(Parser *parser, Arena *token_arena, size_t token_count, Arena *node_arena);

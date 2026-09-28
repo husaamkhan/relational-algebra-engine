@@ -118,7 +118,9 @@ typedef enum
 	AND,
 	OR,
 	NOT,
-	IDENT
+	IDENT,
+	RELATION_DEFINITION,
+	TUPLE
 } Category;
 
 typedef struct

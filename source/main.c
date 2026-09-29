@@ -31,23 +31,21 @@ int main(int argc, char **argv)
 	Lexer lexer;
 	lexer_init(&lexer, file_contents, file_size);
 
-	Arena token_arena = arena_create(1024 * 1024);
+	Arena arena = arena_create(4096);
 	size_t token_count = 0;
 
-	lex(&lexer, &token_arena, &token_count);
+	lex(&lexer, &arena, &token_count);
 	free(file_contents);
 
 	if (lexer.has_error)
 	{
 		LOG_ERR("Errors occurred during lexing");
-		arena_destroy(&token_arena);
+		arena_destroy(&arena);
 		return -1;
 	}
 
-	Arena tree_node_arena = arena_create(1024 * 1024);
-
 	Parser parser;
-	parser_init(&parser, &token_arena, token_count, &tree_node_arena);
+	parser_init(&parser, &arena, token_count);
 
 	Tree tree = (Tree){ .head = NULL, .tail = NULL };
 	parse(&parser, &tree);
@@ -56,8 +54,7 @@ int main(int argc, char **argv)
 
 	int exit_code = parser.has_error ? -1 : 0;
 
-	arena_destroy(&tree_node_arena);
-	arena_destroy(&token_arena);
+	arena_destroy(&arena);
 
 	return exit_code;
 }

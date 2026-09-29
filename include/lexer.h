@@ -6,16 +6,15 @@
 
 #define LEX_ERR(fmt, ...) LOG_ERR("[LEXICAL] " fmt, ##__VA_ARGS__)
 
-typedef struct
-{
+typedef struct {
 	const char *file_contents;
 	size_t file_size;
 	FilePosition pos;
 
 	char cur_char;
-	int cur_pos;
+	size_t cur_pos;
 
-	int lexeme_start;
+	size_t lexeme_start;
 	bool has_error;
 } Lexer;
 

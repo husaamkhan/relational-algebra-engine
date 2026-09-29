@@ -60,7 +60,17 @@ static inline size_t align_up(size_t alignment, size_t value)
 static inline char *read_file(FILE *in, size_t *size_out)
 {
 	fseek(in, 0, SEEK_END);
-	*size_out = ftell(in);
+
+	long size = ftell(in);
+
+	if (size < 0)
+	{
+		fclose(in);
+		return NULL;
+	}
+
+	*size_out = (size_t)size;
+
 	fseek(in, 0, SEEK_SET);
 
 	char *buffer = malloc(*size_out);

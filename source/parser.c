@@ -71,7 +71,7 @@ static Token *peek_next(Parser *parser)
 		return NULL;
 	}
 
-	return (Token *)parser->token_arena->base + parser->cur_pos + 1;
+	return (Token *)parser->arena->base + parser->cur_pos + 1;
 }
 
 static Token *advance(Parser *parser)
@@ -92,13 +92,12 @@ static bool check(Parser *parser, Category category)
 	return token != NULL && token->category == category;
 }
 
-void parser_init(Parser *parser, Arena *token_arena, size_t token_count, Arena *node_arena)
+void parser_init(Parser *parser, Arena *arena, size_t token_count)
 {
-	parser->token_arena = token_arena;
+	parser->arena = arena;
 	parser->token_count = token_count;
 	parser->cur_pos = 0;
-	parser->node_arena = node_arena;
-	parser->cur_token = (Token *)token_arena->base;
+	parser->cur_token = (Token *)arena->base;
 	parser->has_error = false;
 	parser->statement_has_error = false;
 }
@@ -109,7 +108,7 @@ static TreeNode *parse_rename(Parser *parser)
 	rename_token->category = RENAME;
 
 	TreeNode *node = tree_node_create(
-			parser->node_arena,
+			parser->arena,
 			1,
 			NULL,
 			NULL,
@@ -165,7 +164,7 @@ static TreeNode *parse_rename(Parser *parser)
 	name->category = IDENT;
 
 	TreeNode *new_name = tree_node_create(
-			parser->node_arena,
+			parser->arena,
 			1,
 			NULL,
 			NULL,
@@ -266,7 +265,7 @@ static TreeNode *parse_project(Parser *parser)
 	project_token->category = PROJECT;
 
 	TreeNode *node = tree_node_create(
-			parser->node_arena,
+			parser->arena,
 			1,
 			NULL,
 			NULL,
@@ -324,7 +323,7 @@ static TreeNode *parse_project(Parser *parser)
 
 	while (lookahead < parser->token_count)
 	{
-		token = (Token *)parser->token_arena->base + lookahead;
+		token = (Token *)parser->arena->base + lookahead;
 
 		if (token->category != COMMA)
 		{
@@ -341,7 +340,7 @@ static TreeNode *parse_project(Parser *parser)
 			return node;
 		}
 
-		token = (Token *)parser->token_arena->base + lookahead;
+		token = (Token *)parser->arena->base + lookahead;
 
 		if (token->category != WORD)
 		{
@@ -360,7 +359,7 @@ static TreeNode *parse_project(Parser *parser)
 	}
 
 	TreeNode *attributes_node = tree_node_create(
-			parser->node_arena,
+			parser->arena,
 			attribute_count,
 			NULL,
 			NULL,
@@ -472,7 +471,7 @@ static TreeNode *parse_select(Parser *parser)
 	select_token->category = SELECT;
 
 	TreeNode *node = tree_node_create(
-			parser->node_arena,
+			parser->arena,
 			1,
 			NULL,
 			NULL,
@@ -646,7 +645,7 @@ static TreeNode *parse_atom_expression(Parser *parser)
 		advance(parser);
 
 		TreeNode *node = tree_node_create(
-				parser->node_arena,
+				parser->arena,
 				1,
 				NULL,
 				NULL,
@@ -766,7 +765,7 @@ static TreeNode *parse_join(Parser *parser, TreeNode *left)
 		return NULL;
 	}
 
-	Token *relations_token = token_new(parser->node_arena);
+	Token *relations_token = token_new(parser->arena);
 	*relations_token = (Token){
 		.category = JOIN_RELATIONS,
 		.lexeme_start = "JOIN_RELATIONS",
@@ -775,7 +774,7 @@ static TreeNode *parse_join(Parser *parser, TreeNode *left)
 	};
 
 	TreeNode *relations = tree_node_create(
-			parser->node_arena,
+			parser->arena,
 			1,
 			NULL,
 			left,
@@ -785,7 +784,7 @@ static TreeNode *parse_join(Parser *parser, TreeNode *left)
 	relations->token_arr[0] = relations_token;
 
 	TreeNode *node = tree_node_create(
-			parser->node_arena,
+			parser->arena,
 			1,
 			NULL,
 			relations,
@@ -829,7 +828,7 @@ static TreeNode *parse_multiplicative_expression(Parser *parser)
 			}
 
 			TreeNode *node = tree_node_create(
-					parser->node_arena,
+					parser->arena,
 					1,
 					NULL,
 					left,
@@ -904,7 +903,7 @@ static TreeNode *parse_additive_expression(Parser *parser)
 		}
 
 		TreeNode *node = tree_node_create(
-				parser->node_arena,
+				parser->arena,
 				1,
 				NULL,
 				left,
@@ -937,7 +936,7 @@ static TreeNode *parse_operand(Parser *parser)
 	if (token->category == NUMBER || token->category == STRING)
 	{
 		TreeNode *node = tree_node_create(
-				parser->node_arena,
+				parser->arena,
 				1,
 				NULL,
 				NULL,
@@ -984,7 +983,7 @@ static TreeNode *parse_operand(Parser *parser)
 			advance(parser);
 
 			TreeNode *node = tree_node_create(
-					parser->node_arena,
+					parser->arena,
 					2,
 					NULL,
 					NULL,
@@ -998,7 +997,7 @@ static TreeNode *parse_operand(Parser *parser)
 		}
 
 		TreeNode *node = tree_node_create(
-				parser->node_arena,
+				parser->arena,
 				1,
 				NULL,
 				NULL,
@@ -1067,7 +1066,7 @@ static TreeNode *parse_comparison(Parser *parser)
 	}
 
 	TreeNode *node = tree_node_create(
-			parser->node_arena,
+			parser->arena,
 			1,
 			NULL,
 			left,
@@ -1097,7 +1096,7 @@ static TreeNode *parse_not_expression(Parser *parser)
 		}
 
 		TreeNode *node = tree_node_create(
-				parser->node_arena,
+				parser->arena,
 				1,
 				NULL,
 				child,
@@ -1163,7 +1162,7 @@ static TreeNode *parse_and_expression(Parser *parser)
 		}
 
 		TreeNode *node = tree_node_create(
-				parser->node_arena,
+				parser->arena,
 				1,
 				NULL,
 				left,
@@ -1200,7 +1199,7 @@ static TreeNode *parse_or_expression(Parser *parser)
 		}
 
 		TreeNode *node = tree_node_create(
-				parser->node_arena,
+				parser->arena,
 				1,
 				NULL,
 				left,
@@ -1263,7 +1262,7 @@ static TreeNode *parse_relation_definition_attribute_list(
 
 	while (lookahead < parser->token_count)
 	{
-		token = (Token *)parser->token_arena->base + lookahead;
+		token = (Token *)parser->arena->base + lookahead;
 
 		if (token->category != COMMA)
 		{
@@ -1280,7 +1279,7 @@ static TreeNode *parse_relation_definition_attribute_list(
 			return NULL;
 		}
 
-		token = (Token *)parser->token_arena->base + lookahead;
+		token = (Token *)parser->arena->base + lookahead;
 
 		if (token->category != WORD)
 		{
@@ -1299,7 +1298,7 @@ static TreeNode *parse_relation_definition_attribute_list(
 	}
 
 	TreeNode *attributes_node = tree_node_create(
-			parser->node_arena,
+			parser->arena,
 			count,
 			NULL,
 			NULL,
@@ -1353,14 +1352,14 @@ static TreeNode *parse_relation_definition_tuple(
 		Parser *parser, size_t attribute_count)
 {
 	TreeNode *tuple = tree_node_create(
-			parser->node_arena,
+			parser->arena,
 			attribute_count + 1,
 			NULL,
 			NULL,
 			NULL
 			);
 
-	Token *tuple_token = token_new(parser->node_arena);
+	Token *tuple_token = token_new(parser->arena);
 	*tuple_token = (Token){
 		.category = TUPLE,
 		.lexeme_start = NULL,
@@ -1575,7 +1574,7 @@ static TreeNode *parse_relation_definition(Parser *parser)
 		return NULL;
 	}
 
-	Token *definition_token = token_new(parser->node_arena);
+	Token *definition_token = token_new(parser->arena);
 	*definition_token = (Token){
 		.category = RELATION_DEFINITION,
 		.lexeme_start = NULL,
@@ -1584,7 +1583,7 @@ static TreeNode *parse_relation_definition(Parser *parser)
 	};
 
 	TreeNode *definition_node = tree_node_create(
-			parser->node_arena,
+			parser->arena,
 			1,
 			NULL,
 			NULL,
@@ -1594,7 +1593,7 @@ static TreeNode *parse_relation_definition(Parser *parser)
 	definition_node->token_arr[0] = definition_token;
 
 	TreeNode *relation_node = tree_node_create(
-			parser->node_arena,
+			parser->arena,
 			1,
 			NULL,
 			NULL,
@@ -1634,7 +1633,7 @@ static TreeNode *parse_relation_definition(Parser *parser)
 	Token *equals_token = advance(parser);
 
 	TreeNode *equals_node = tree_node_create(
-			parser->node_arena,
+			parser->arena,
 			1,
 			NULL,
 			definition_node,
@@ -1850,7 +1849,7 @@ void parse(Parser *parser, Tree *tree)
 		}
 
 		StatementNode *stmt = arena_push(
-				parser->node_arena,
+				parser->arena,
 				sizeof(StatementNode),
 				_Alignof(StatementNode));
 

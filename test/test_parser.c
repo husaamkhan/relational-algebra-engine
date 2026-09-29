@@ -3,9 +3,7 @@
 #include "lexer.h"
 #include "parser.h"
 
-static Arena token_arena;
-static Arena tree_node_arena;
-
+static Arena arena;
 
 static Token *test_token(Arena *arena, Category category, const char *lexeme)
 {
@@ -101,7 +99,7 @@ static Tree parse_source(const char *src, bool *has_error_out)
 	lexer_init(&lexer, src, strlen(src));
 
 	size_t token_count = 0;
-	lex(&lexer, &token_arena, &token_count);
+	lex(&lexer, &arena, &token_count);
 
 	TEST_ASSERT_FALSE_MESSAGE(
 			lexer.has_error,
@@ -109,12 +107,7 @@ static Tree parse_source(const char *src, bool *has_error_out)
 			);
 
 	Parser parser;
-	parser_init(
-			&parser,
-			&token_arena,
-			token_count,
-			&tree_node_arena
-		   );
+	parser_init(&parser, &arena, token_count);
 
 	Tree tree = (Tree){
 		.head = NULL,
@@ -215,16 +208,13 @@ static void assert_tree_node(TreeNode *actual, TreeNode *expected)
 
 void setUp(void)
 {
-	token_arena = arena_create(4096);
-	tree_node_arena = arena_create(4096);
-
+	arena = arena_create(4096);
 	printf("\n=== %s ===\n", Unity.CurrentTestName);
 }
 
 void tearDown(void)
 {
-	arena_destroy(&token_arena);
-	arena_destroy(&tree_node_arena);
+	arena_destroy(&arena);
 }
 
 void test_parse_simple_relation(void)
@@ -239,7 +229,7 @@ void test_parse_simple_relation(void)
 	const char *lexemes[] = {"selection"};
 
 	TreeNode *expected = test_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			lexemes,
 			1,
@@ -263,7 +253,7 @@ void test_parse_bare_select_is_error(void)
 	const char *lexemes[] = {"select"};
 
 	TreeNode *expected = test_node(
-			&tree_node_arena,
+			&arena,
 			SELECT,
 			lexemes,
 			1,
@@ -286,7 +276,7 @@ void test_parse_bare_project_is_error(void)
 	const char *lexemes[] = {"project"};
 
 	TreeNode *expected = test_node(
-			&tree_node_arena,
+			&arena,
 			PROJECT,
 			lexemes,
 			1,
@@ -309,7 +299,7 @@ void test_parse_bare_rename_is_error(void)
 	const char *lexemes[] = {"rename"};
 
 	TreeNode *expected = test_node(
-			&tree_node_arena,
+			&arena,
 			RENAME,
 			lexemes,
 			1,
@@ -328,7 +318,7 @@ void test_parse_select_simple_comparison(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -336,7 +326,7 @@ void test_parse_select_simple_comparison(void)
 			);
 
 	TreeNode *age = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"Age",
 			NULL,
@@ -344,7 +334,7 @@ void test_parse_select_simple_comparison(void)
 			);
 
 	TreeNode *num30 = test_single_node(
-			&tree_node_arena,
+			&arena,
 			NUMBER,
 			"30",
 			NULL,
@@ -352,7 +342,7 @@ void test_parse_select_simple_comparison(void)
 			);
 
 	TreeNode *cond = test_single_node(
-			&tree_node_arena,
+			&arena,
 			GREATER_THAN,
 			">",
 			age,
@@ -360,7 +350,7 @@ void test_parse_select_simple_comparison(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			SELECT,
 			"select",
 			cond,
@@ -381,7 +371,7 @@ void test_parse_select_and_condition(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -389,7 +379,7 @@ void test_parse_select_and_condition(void)
 			);
 
 	TreeNode *age = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"Age",
 			NULL,
@@ -397,7 +387,7 @@ void test_parse_select_and_condition(void)
 			);
 
 	TreeNode *num30 = test_single_node(
-			&tree_node_arena,
+			&arena,
 			NUMBER,
 			"30",
 			NULL,
@@ -405,7 +395,7 @@ void test_parse_select_and_condition(void)
 			);
 
 	TreeNode *left_cmp = test_single_node(
-			&tree_node_arena,
+			&arena,
 			GREATER_THAN,
 			">",
 			age,
@@ -413,7 +403,7 @@ void test_parse_select_and_condition(void)
 			);
 
 	TreeNode *did = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"DID",
 			NULL,
@@ -421,7 +411,7 @@ void test_parse_select_and_condition(void)
 			);
 
 	TreeNode *d1 = test_single_node(
-			&tree_node_arena,
+			&arena,
 			STRING,
 			"'D1'",
 			NULL,
@@ -429,7 +419,7 @@ void test_parse_select_and_condition(void)
 			);
 
 	TreeNode *right_cmp = test_single_node(
-			&tree_node_arena,
+			&arena,
 			EQUAL,
 			"=",
 			did,
@@ -437,7 +427,7 @@ void test_parse_select_and_condition(void)
 			);
 
 	TreeNode *and_node = test_single_node(
-			&tree_node_arena,
+			&arena,
 			AND,
 			"and",
 			left_cmp,
@@ -445,7 +435,7 @@ void test_parse_select_and_condition(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			SELECT,
 			"select",
 			and_node,
@@ -466,7 +456,7 @@ void test_parse_select_or_condition(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -474,7 +464,7 @@ void test_parse_select_or_condition(void)
 			);
 
 	TreeNode *age1 = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"Age",
 			NULL,
@@ -482,7 +472,7 @@ void test_parse_select_or_condition(void)
 			);
 
 	TreeNode *num30 = test_single_node(
-			&tree_node_arena,
+			&arena,
 			NUMBER,
 			"30",
 			NULL,
@@ -490,7 +480,7 @@ void test_parse_select_or_condition(void)
 			);
 
 	TreeNode *left_cmp = test_single_node(
-			&tree_node_arena,
+			&arena,
 			GREATER_THAN,
 			">",
 			age1,
@@ -498,7 +488,7 @@ void test_parse_select_or_condition(void)
 			);
 
 	TreeNode *age2 = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"Age",
 			NULL,
@@ -506,7 +496,7 @@ void test_parse_select_or_condition(void)
 			);
 
 	TreeNode *num10 = test_single_node(
-			&tree_node_arena,
+			&arena,
 			NUMBER,
 			"10",
 			NULL,
@@ -514,7 +504,7 @@ void test_parse_select_or_condition(void)
 			);
 
 	TreeNode *right_cmp = test_single_node(
-			&tree_node_arena,
+			&arena,
 			LESS_THAN,
 			"<",
 			age2,
@@ -522,7 +512,7 @@ void test_parse_select_or_condition(void)
 			);
 
 	TreeNode *or_node = test_single_node(
-			&tree_node_arena,
+			&arena,
 			OR,
 			"or",
 			left_cmp,
@@ -530,7 +520,7 @@ void test_parse_select_or_condition(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			SELECT,
 			"select",
 			or_node,
@@ -551,7 +541,7 @@ void test_parse_select_not_condition(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -559,7 +549,7 @@ void test_parse_select_not_condition(void)
 			);
 
 	TreeNode *age = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"Age",
 			NULL,
@@ -567,7 +557,7 @@ void test_parse_select_not_condition(void)
 			);
 
 	TreeNode *num30 = test_single_node(
-			&tree_node_arena,
+			&arena,
 			NUMBER,
 			"30",
 			NULL,
@@ -575,7 +565,7 @@ void test_parse_select_not_condition(void)
 			);
 
 	TreeNode *cmp = test_single_node(
-			&tree_node_arena,
+			&arena,
 			GREATER_THAN,
 			">",
 			age,
@@ -583,7 +573,7 @@ void test_parse_select_not_condition(void)
 			);
 
 	TreeNode *not_node = test_single_node(
-			&tree_node_arena,
+			&arena,
 			NOT,
 			"not",
 			cmp,
@@ -591,7 +581,7 @@ void test_parse_select_not_condition(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			SELECT,
 			"select",
 			not_node,
@@ -612,7 +602,7 @@ void test_parse_select_not_parenthesized_condition(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -620,7 +610,7 @@ void test_parse_select_not_parenthesized_condition(void)
 			);
 
 	TreeNode *age = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"Age",
 			NULL,
@@ -628,7 +618,7 @@ void test_parse_select_not_parenthesized_condition(void)
 			);
 
 	TreeNode *num30 = test_single_node(
-			&tree_node_arena,
+			&arena,
 			NUMBER,
 			"30",
 			NULL,
@@ -636,7 +626,7 @@ void test_parse_select_not_parenthesized_condition(void)
 			);
 
 	TreeNode *left_cmp = test_single_node(
-			&tree_node_arena,
+			&arena,
 			GREATER_THAN,
 			">",
 			age,
@@ -644,7 +634,7 @@ void test_parse_select_not_parenthesized_condition(void)
 			);
 
 	TreeNode *did = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"DID",
 			NULL,
@@ -652,7 +642,7 @@ void test_parse_select_not_parenthesized_condition(void)
 			);
 
 	TreeNode *d1 = test_single_node(
-			&tree_node_arena,
+			&arena,
 			STRING,
 			"'D1'",
 			NULL,
@@ -660,7 +650,7 @@ void test_parse_select_not_parenthesized_condition(void)
 			);
 
 	TreeNode *right_cmp = test_single_node(
-			&tree_node_arena,
+			&arena,
 			EQUAL,
 			"=",
 			did,
@@ -668,7 +658,7 @@ void test_parse_select_not_parenthesized_condition(void)
 			);
 
 	TreeNode *and_node = test_single_node(
-			&tree_node_arena,
+			&arena,
 			AND,
 			"and",
 			left_cmp,
@@ -676,7 +666,7 @@ void test_parse_select_not_parenthesized_condition(void)
 			);
 
 	TreeNode *not_node = test_single_node(
-			&tree_node_arena,
+			&arena,
 			NOT,
 			"not",
 			and_node,
@@ -684,7 +674,7 @@ void test_parse_select_not_parenthesized_condition(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			SELECT,
 			"select",
 			not_node,
@@ -705,7 +695,7 @@ void test_parse_select_attribute_vs_attribute(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -713,7 +703,7 @@ void test_parse_select_attribute_vs_attribute(void)
 			);
 
 	TreeNode *age = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"Age",
 			NULL,
@@ -721,7 +711,7 @@ void test_parse_select_attribute_vs_attribute(void)
 			);
 
 	TreeNode *salary = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"Salary",
 			NULL,
@@ -729,7 +719,7 @@ void test_parse_select_attribute_vs_attribute(void)
 			);
 
 	TreeNode *cmp = test_single_node(
-			&tree_node_arena,
+			&arena,
 			EQUAL,
 			"=",
 			age,
@@ -737,7 +727,7 @@ void test_parse_select_attribute_vs_attribute(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			SELECT,
 			"select",
 			cmp,
@@ -760,7 +750,7 @@ void test_parse_select_qualified_attribute(void)
 	const char *emp_age_lexemes[] = {"Emp", "Age"};
 
 	TreeNode *emp_age = test_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			emp_age_lexemes,
 			2,
@@ -769,7 +759,7 @@ void test_parse_select_qualified_attribute(void)
 			);
 
 	TreeNode *num30 = test_single_node(
-			&tree_node_arena,
+			&arena,
 			NUMBER,
 			"30",
 			NULL,
@@ -777,7 +767,7 @@ void test_parse_select_qualified_attribute(void)
 			);
 
 	TreeNode *cmp = test_single_node(
-			&tree_node_arena,
+			&arena,
 			GREATER_THAN,
 			">",
 			emp_age,
@@ -785,7 +775,7 @@ void test_parse_select_qualified_attribute(void)
 			);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -793,7 +783,7 @@ void test_parse_select_qualified_attribute(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			SELECT,
 			"select",
 			cmp,
@@ -814,7 +804,7 @@ void test_parse_select_keyword_as_attribute(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *uni = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"union",
 			NULL,
@@ -822,7 +812,7 @@ void test_parse_select_keyword_as_attribute(void)
 			);
 
 	TreeNode *num3 = test_single_node(
-			&tree_node_arena,
+			&arena,
 			NUMBER,
 			"3",
 			NULL,
@@ -830,7 +820,7 @@ void test_parse_select_keyword_as_attribute(void)
 			);
 
 	TreeNode *cmp = test_single_node(
-			&tree_node_arena,
+			&arena,
 			EQUAL,
 			"=",
 			uni,
@@ -838,7 +828,7 @@ void test_parse_select_keyword_as_attribute(void)
 			);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -846,7 +836,7 @@ void test_parse_select_keyword_as_attribute(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			SELECT,
 			"select",
 			cmp,
@@ -1047,7 +1037,7 @@ void test_parse_project_single_attribute(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *attr = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"A",
 			NULL,
@@ -1055,7 +1045,7 @@ void test_parse_project_single_attribute(void)
 			);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -1063,7 +1053,7 @@ void test_parse_project_single_attribute(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			PROJECT,
 			"project",
 			attr,
@@ -1086,7 +1076,7 @@ void test_parse_project_multiple_attributes(void)
 	const char *attrs_lexemes[] = {"A", "B", "C"};
 
 	TreeNode *attrs = test_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			attrs_lexemes,
 			3,
@@ -1095,7 +1085,7 @@ void test_parse_project_multiple_attributes(void)
 			);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -1103,7 +1093,7 @@ void test_parse_project_multiple_attributes(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			PROJECT,
 			"project",
 			attrs,
@@ -1124,7 +1114,7 @@ void test_parse_project_keyword_as_attribute(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *attr = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"union",
 			NULL,
@@ -1132,7 +1122,7 @@ void test_parse_project_keyword_as_attribute(void)
 			);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -1140,7 +1130,7 @@ void test_parse_project_keyword_as_attribute(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			PROJECT,
 			"project",
 			attr,
@@ -1161,7 +1151,7 @@ void test_parse_rename(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *name = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"B",
 			NULL,
@@ -1169,7 +1159,7 @@ void test_parse_rename(void)
 			);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -1177,7 +1167,7 @@ void test_parse_rename(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			RENAME,
 			"rename",
 			name,
@@ -1198,7 +1188,7 @@ void test_parse_project_nested_select(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -1206,7 +1196,7 @@ void test_parse_project_nested_select(void)
 			);
 
 	TreeNode *age = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"Age",
 			NULL,
@@ -1214,7 +1204,7 @@ void test_parse_project_nested_select(void)
 			);
 
 	TreeNode *num30 = test_single_node(
-			&tree_node_arena,
+			&arena,
 			NUMBER,
 			"30",
 			NULL,
@@ -1222,7 +1212,7 @@ void test_parse_project_nested_select(void)
 			);
 
 	TreeNode *cmp = test_single_node(
-			&tree_node_arena,
+			&arena,
 			GREATER_THAN,
 			">",
 			age,
@@ -1230,7 +1220,7 @@ void test_parse_project_nested_select(void)
 			);
 
 	TreeNode *select = test_single_node(
-			&tree_node_arena,
+			&arena,
 			SELECT,
 			"select",
 			cmp,
@@ -1240,7 +1230,7 @@ void test_parse_project_nested_select(void)
 	const char *attrs_lexemes[] = {"A", "B"};
 
 	TreeNode *attrs = test_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			attrs_lexemes,
 			2,
@@ -1249,7 +1239,7 @@ void test_parse_project_nested_select(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			PROJECT,
 			"project",
 			attrs,
@@ -1270,7 +1260,7 @@ void test_parse_rename_nested_project(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -1278,7 +1268,7 @@ void test_parse_rename_nested_project(void)
 			);
 
 	TreeNode *attr = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"A",
 			NULL,
@@ -1286,7 +1276,7 @@ void test_parse_rename_nested_project(void)
 			);
 
 	TreeNode *project = test_single_node(
-			&tree_node_arena,
+			&arena,
 			PROJECT,
 			"project",
 			attr,
@@ -1294,7 +1284,7 @@ void test_parse_rename_nested_project(void)
 			);
 
 	TreeNode *name = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"Employees",
 			NULL,
@@ -1302,7 +1292,7 @@ void test_parse_rename_nested_project(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			RENAME,
 			"rename",
 			name,
@@ -1408,7 +1398,7 @@ void test_parse_union(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -1416,7 +1406,7 @@ void test_parse_union(void)
 			);
 
 	TreeNode *s = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"S",
 			NULL,
@@ -1424,7 +1414,7 @@ void test_parse_union(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			UNION,
 			"union",
 			r,
@@ -1442,7 +1432,7 @@ void test_parse_intersect(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -1450,7 +1440,7 @@ void test_parse_intersect(void)
 			);
 
 	TreeNode *s = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"S",
 			NULL,
@@ -1458,7 +1448,7 @@ void test_parse_intersect(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			INTERSECT,
 			"intersect",
 			r,
@@ -1476,7 +1466,7 @@ void test_parse_minus(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -1484,7 +1474,7 @@ void test_parse_minus(void)
 			);
 
 	TreeNode *s = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"S",
 			NULL,
@@ -1492,7 +1482,7 @@ void test_parse_minus(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			MINUS,
 			"minus",
 			r,
@@ -1510,7 +1500,7 @@ void test_parse_times(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -1518,7 +1508,7 @@ void test_parse_times(void)
 			);
 
 	TreeNode *s = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"S",
 			NULL,
@@ -1526,7 +1516,7 @@ void test_parse_times(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			TIMES,
 			"times",
 			r,
@@ -1547,7 +1537,7 @@ void test_parse_join(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -1555,7 +1545,7 @@ void test_parse_join(void)
 			);
 
 	TreeNode *s = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"S",
 			NULL,
@@ -1563,7 +1553,7 @@ void test_parse_join(void)
 			);
 
 	TreeNode *relations = test_single_node(
-			&tree_node_arena,
+			&arena,
 			JOIN_RELATIONS,
 			"JOIN_RELATIONS",
 			r,
@@ -1571,7 +1561,7 @@ void test_parse_join(void)
 			);
 
 	TreeNode *a = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"A",
 			NULL,
@@ -1579,7 +1569,7 @@ void test_parse_join(void)
 			);
 
 	TreeNode *b = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"B",
 			NULL,
@@ -1587,7 +1577,7 @@ void test_parse_join(void)
 			);
 
 	TreeNode *condition = test_single_node(
-			&tree_node_arena,
+			&arena,
 			EQUAL,
 			"=",
 			a,
@@ -1595,7 +1585,7 @@ void test_parse_join(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			JOIN,
 			"join",
 			relations,
@@ -1616,7 +1606,7 @@ void test_parse_join_complex_condition(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -1624,7 +1614,7 @@ void test_parse_join_complex_condition(void)
 			);
 
 	TreeNode *s = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"S",
 			NULL,
@@ -1632,7 +1622,7 @@ void test_parse_join_complex_condition(void)
 			);
 
 	TreeNode *relations = test_single_node(
-			&tree_node_arena,
+			&arena,
 			JOIN_RELATIONS,
 			"JOIN_RELATIONS",
 			r,
@@ -1640,7 +1630,7 @@ void test_parse_join_complex_condition(void)
 			);
 
 	TreeNode *a = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"A",
 			NULL,
@@ -1648,7 +1638,7 @@ void test_parse_join_complex_condition(void)
 			);
 
 	TreeNode *b = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"B",
 			NULL,
@@ -1656,7 +1646,7 @@ void test_parse_join_complex_condition(void)
 			);
 
 	TreeNode *c = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"C",
 			NULL,
@@ -1664,7 +1654,7 @@ void test_parse_join_complex_condition(void)
 			);
 
 	TreeNode *ten = test_single_node(
-			&tree_node_arena,
+			&arena,
 			NUMBER,
 			"10",
 			NULL,
@@ -1672,7 +1662,7 @@ void test_parse_join_complex_condition(void)
 			);
 
 	TreeNode *equal = test_single_node(
-			&tree_node_arena,
+			&arena,
 			EQUAL,
 			"=",
 			a,
@@ -1680,7 +1670,7 @@ void test_parse_join_complex_condition(void)
 			);
 
 	TreeNode *greater = test_single_node(
-			&tree_node_arena,
+			&arena,
 			GREATER_THAN,
 			">",
 			c,
@@ -1688,7 +1678,7 @@ void test_parse_join_complex_condition(void)
 			);
 
 	TreeNode *and_node = test_single_node(
-			&tree_node_arena,
+			&arena,
 			AND,
 			"and",
 			equal,
@@ -1696,7 +1686,7 @@ void test_parse_join_complex_condition(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			JOIN,
 			"join",
 			relations,
@@ -1717,7 +1707,7 @@ void test_parse_join_qualified_attributes(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -1725,7 +1715,7 @@ void test_parse_join_qualified_attributes(void)
 			);
 
 	TreeNode *s = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"S",
 			NULL,
@@ -1733,7 +1723,7 @@ void test_parse_join_qualified_attributes(void)
 			);
 
 	TreeNode *relations = test_single_node(
-			&tree_node_arena,
+			&arena,
 			JOIN_RELATIONS,
 			"JOIN_RELATIONS",
 			r,
@@ -1743,7 +1733,7 @@ void test_parse_join_qualified_attributes(void)
 	const char *left_attr_lexemes[] = {"R", "id"};
 
 	TreeNode *left_attr = test_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			left_attr_lexemes,
 			2,
@@ -1754,7 +1744,7 @@ void test_parse_join_qualified_attributes(void)
 	const char *right_attr_lexemes[] = {"S", "id"};
 
 	TreeNode *right_attr = test_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			right_attr_lexemes,
 			2,
@@ -1763,7 +1753,7 @@ void test_parse_join_qualified_attributes(void)
 			);
 
 	TreeNode *condition = test_single_node(
-			&tree_node_arena,
+			&arena,
 			EQUAL,
 			"=",
 			left_attr,
@@ -1771,7 +1761,7 @@ void test_parse_join_qualified_attributes(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			JOIN,
 			"join",
 			relations,
@@ -1847,7 +1837,7 @@ void test_parse_binary_left_associativity(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -1855,7 +1845,7 @@ void test_parse_binary_left_associativity(void)
 			);
 
 	TreeNode *s = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"S",
 			NULL,
@@ -1863,7 +1853,7 @@ void test_parse_binary_left_associativity(void)
 			);
 
 	TreeNode *t = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"T",
 			NULL,
@@ -1871,7 +1861,7 @@ void test_parse_binary_left_associativity(void)
 			);
 
 	TreeNode *union_rs = test_single_node(
-			&tree_node_arena,
+			&arena,
 			UNION,
 			"union",
 			r,
@@ -1879,7 +1869,7 @@ void test_parse_binary_left_associativity(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			UNION,
 			"union",
 			union_rs,
@@ -1900,7 +1890,7 @@ void test_parse_binary_precedence(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -1908,7 +1898,7 @@ void test_parse_binary_precedence(void)
 			);
 
 	TreeNode *s = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"S",
 			NULL,
@@ -1916,7 +1906,7 @@ void test_parse_binary_precedence(void)
 			);
 
 	TreeNode *t = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"T",
 			NULL,
@@ -1924,7 +1914,7 @@ void test_parse_binary_precedence(void)
 			);
 
 	TreeNode *times = test_single_node(
-			&tree_node_arena,
+			&arena,
 			TIMES,
 			"times",
 			s,
@@ -1932,7 +1922,7 @@ void test_parse_binary_precedence(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			UNION,
 			"union",
 			r,
@@ -1953,7 +1943,7 @@ void test_parse_unary_binary_precedence(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *a = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"A",
 			NULL,
@@ -1961,7 +1951,7 @@ void test_parse_unary_binary_precedence(void)
 			);
 
 	TreeNode *one = test_single_node(
-			&tree_node_arena,
+			&arena,
 			NUMBER,
 			"1",
 			NULL,
@@ -1969,7 +1959,7 @@ void test_parse_unary_binary_precedence(void)
 			);
 
 	TreeNode *condition = test_single_node(
-			&tree_node_arena,
+			&arena,
 			EQUAL,
 			"=",
 			a,
@@ -1977,7 +1967,7 @@ void test_parse_unary_binary_precedence(void)
 			);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -1985,7 +1975,7 @@ void test_parse_unary_binary_precedence(void)
 			);
 
 	TreeNode *select = test_single_node(
-			&tree_node_arena,
+			&arena,
 			SELECT,
 			"select",
 			condition,
@@ -1993,7 +1983,7 @@ void test_parse_unary_binary_precedence(void)
 			);
 
 	TreeNode *s = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"S",
 			NULL,
@@ -2001,7 +1991,7 @@ void test_parse_unary_binary_precedence(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			UNION,
 			"union",
 			select,
@@ -2022,7 +2012,7 @@ void test_parse_parentheses_override_precedence(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -2030,7 +2020,7 @@ void test_parse_parentheses_override_precedence(void)
 			);
 
 	TreeNode *s = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"S",
 			NULL,
@@ -2038,7 +2028,7 @@ void test_parse_parentheses_override_precedence(void)
 			);
 
 	TreeNode *t = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"T",
 			NULL,
@@ -2046,7 +2036,7 @@ void test_parse_parentheses_override_precedence(void)
 			);
 
 	TreeNode *union_rs = test_single_node(
-			&tree_node_arena,
+			&arena,
 			UNION,
 			"union",
 			r,
@@ -2054,7 +2044,7 @@ void test_parse_parentheses_override_precedence(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			TIMES,
 			"times",
 			union_rs,
@@ -2078,7 +2068,7 @@ void test_parse_relation_definition(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *name = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"Employees",
 			NULL,
@@ -2093,7 +2083,7 @@ void test_parse_relation_definition(void)
 	};
 
 	TreeNode *attributes = test_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			attribute_lexemes,
 			4,
@@ -2102,7 +2092,7 @@ void test_parse_relation_definition(void)
 			);
 
 	TreeNode *definition = test_single_node(
-			&tree_node_arena,
+			&arena,
 			RELATION_DEFINITION,
 			NULL,
 			name,
@@ -2124,14 +2114,14 @@ void test_parse_relation_definition(void)
 	};
 
 	TreeNode *tuple = test_tuple(
-			&tree_node_arena,
+			&arena,
 			tuple_categories,
 			tuple_values,
 			4
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			EQUAL,
 			"=",
 			definition,
@@ -2157,7 +2147,7 @@ void test_parse_relation_definition_multiple_tuples(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *name = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"Employees",
 			NULL,
@@ -2172,7 +2162,7 @@ void test_parse_relation_definition_multiple_tuples(void)
 	};
 
 	TreeNode *attributes = test_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			attribute_lexemes,
 			4,
@@ -2181,7 +2171,7 @@ void test_parse_relation_definition_multiple_tuples(void)
 			);
 
 	TreeNode *definition = test_single_node(
-			&tree_node_arena,
+			&arena,
 			RELATION_DEFINITION,
 			NULL,
 			name,
@@ -2203,7 +2193,7 @@ void test_parse_relation_definition_multiple_tuples(void)
 	};
 
 	TreeNode *tuple1 = test_tuple(
-			&tree_node_arena,
+			&arena,
 			tuple1_categories,
 			tuple1_values,
 			4
@@ -2225,7 +2215,7 @@ void test_parse_relation_definition_multiple_tuples(void)
 	};
 
 	TreeNode *tuple2 = test_tuple(
-			&tree_node_arena,
+			&arena,
 			tuple2_categories,
 			tuple2_values,
 			4
@@ -2247,7 +2237,7 @@ void test_parse_relation_definition_multiple_tuples(void)
 	};
 
 	TreeNode *tuple3 = test_tuple(
-			&tree_node_arena,
+			&arena,
 			tuple3_categories,
 			tuple3_values,
 			4
@@ -2262,7 +2252,7 @@ void test_parse_relation_definition_multiple_tuples(void)
 
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			EQUAL,
 			"=",
 			definition,
@@ -2286,7 +2276,7 @@ void test_parse_relation_definition_single_attribute(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *name = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -2296,7 +2286,7 @@ void test_parse_relation_definition_single_attribute(void)
 	const char *attribute_lexemes[] = {"A"};
 
 	TreeNode *attributes = test_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			attribute_lexemes,
 			1,
@@ -2305,7 +2295,7 @@ void test_parse_relation_definition_single_attribute(void)
 			);
 
 	TreeNode *definition = test_single_node(
-			&tree_node_arena,
+			&arena,
 			RELATION_DEFINITION,
 			NULL,
 			name,
@@ -2321,14 +2311,14 @@ void test_parse_relation_definition_single_attribute(void)
 	};
 
 	TreeNode *tuple = test_tuple(
-			&tree_node_arena,
+			&arena,
 			tuple_categories,
 			tuple_values,
 			1
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			EQUAL,
 			"=",
 			definition,
@@ -2352,7 +2342,7 @@ void test_parse_relation_definition_tuple_values(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *name = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -2367,7 +2357,7 @@ void test_parse_relation_definition_tuple_values(void)
 	};
 
 	TreeNode *attributes = test_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			attribute_lexemes,
 			4,
@@ -2376,7 +2366,7 @@ void test_parse_relation_definition_tuple_values(void)
 			);
 
 	TreeNode *definition = test_single_node(
-			&tree_node_arena,
+			&arena,
 			RELATION_DEFINITION,
 			NULL,
 			name,
@@ -2398,14 +2388,14 @@ void test_parse_relation_definition_tuple_values(void)
 	};
 
 	TreeNode *tuple = test_tuple(
-			&tree_node_arena,
+			&arena,
 			tuple_categories,
 			tuple_values,
 			4
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			EQUAL,
 			"=",
 			definition,
@@ -2429,7 +2419,7 @@ void test_parse_relation_definition_keyword_attribute(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *name = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -2443,7 +2433,7 @@ void test_parse_relation_definition_keyword_attribute(void)
 	};
 
 	TreeNode *attributes = test_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			attribute_lexemes,
 			3,
@@ -2452,7 +2442,7 @@ void test_parse_relation_definition_keyword_attribute(void)
 			);
 
 	TreeNode *definition = test_single_node(
-			&tree_node_arena,
+			&arena,
 			RELATION_DEFINITION,
 			NULL,
 			name,
@@ -2472,14 +2462,14 @@ void test_parse_relation_definition_keyword_attribute(void)
 	};
 
 	TreeNode *tuple = test_tuple(
-			&tree_node_arena,
+			&arena,
 			tuple_categories,
 			tuple_values,
 			3
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			EQUAL,
 			"=",
 			definition,
@@ -2669,7 +2659,7 @@ void test_parse_identifier_expression_not_relation_definition(void)
 	TEST_ASSERT_FALSE(has_error);
 
 	TreeNode *r = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"R",
 			NULL,
@@ -2677,7 +2667,7 @@ void test_parse_identifier_expression_not_relation_definition(void)
 			);
 
 	TreeNode *s = test_single_node(
-			&tree_node_arena,
+			&arena,
 			IDENT,
 			"S",
 			NULL,
@@ -2685,7 +2675,7 @@ void test_parse_identifier_expression_not_relation_definition(void)
 			);
 
 	TreeNode *root = test_single_node(
-			&tree_node_arena,
+			&arena,
 			UNION,
 			"union",
 			r,

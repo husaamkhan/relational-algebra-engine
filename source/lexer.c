@@ -41,7 +41,7 @@ void lexer_init(Lexer *lexer, const char *file_contents, size_t file_size)
  */
 static bool peek(const Lexer *lexer, char *c)
 {
-	if (lexer->cur_pos >= (int)lexer->file_size) return false;
+	if (lexer->cur_pos >= lexer->file_size) return false;
 
 	*c = lexer->file_contents[lexer->cur_pos];
 	return true;
@@ -100,7 +100,7 @@ void lex(Lexer *lexer, Arena *arena, size_t *count_out)
 {
 	*count_out = 0;
 
-	while (lexer->cur_pos < (int)lexer->file_size)
+	while (lexer->cur_pos < lexer->file_size)
 	{
 		lexer->lexeme_start  = lexer->cur_pos;
 		Token *token         = token_new(arena);
@@ -230,7 +230,7 @@ void lex(Lexer *lexer, Arena *arena, size_t *count_out)
 				
 				if (string_error) continue;
 
-				token->lexeme_length = (lexer->file_contents + lexer->cur_pos) - token->lexeme_start;
+				token->lexeme_length = (size_t)((lexer->file_contents + lexer->cur_pos) - token->lexeme_start);
 				break;
 			}
 			case '/':
@@ -276,9 +276,7 @@ void lex(Lexer *lexer, Arena *arena, size_t *count_out)
 						advance(lexer);
 					}
 
-					token->lexeme_length =
-						(lexer->file_contents + lexer->cur_pos) -
-						token->lexeme_start;
+					token->lexeme_length = (size_t)((lexer->file_contents + lexer->cur_pos) - token->lexeme_start);
 				}
 
 				else if (lexer->cur_char == '-' || isdigit(lexer->cur_char))
@@ -314,7 +312,7 @@ void lex(Lexer *lexer, Arena *arena, size_t *count_out)
 						while (peek(lexer, &next_char) && isdigit(next_char)) advance(lexer);
 					}
 
-					token->lexeme_length = (lexer->file_contents + lexer->cur_pos) - token->lexeme_start;
+					token->lexeme_length = (size_t)((lexer->file_contents + lexer->cur_pos) - token->lexeme_start);
 					token->category = NUMBER;
 				}
 

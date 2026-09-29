@@ -90,6 +90,8 @@
     Replaced this with a get_word_category helper function that returns a category enum based on the tokens lexeme.
 
 ## September 28
--   Implementing relation definitions. Running into a lot of issues due to ai-generated code related to segmentation faults and other bugs,
+-   Implemented relation definitions parsing. Ran into a lot of issues due to ai-generated code related to segmentation faults and other bugs,
     code that didn't match the unit tests' expectations, etc.
--   
+-   Improved arena usage
+-   Moved test cases specified in assignment guideline to separate test files, and added new build target to build+run those tests.
+-   Added compile flags and fixed tons of compile warnings

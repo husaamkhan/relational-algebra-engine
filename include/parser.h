@@ -7,19 +7,17 @@
 
 typedef struct
 {
-	Arena *token_arena;
+	Arena *arena;
 	size_t token_count;
 
 	Token *cur_token;
 	size_t cur_pos;
 
-	Arena *node_arena;
-
 	bool has_error;
 	bool statement_has_error;
 } Parser;
 
-void parser_init(Parser *parser, Arena *token_arena, size_t token_count, Arena *node_arena);
+void parser_init(Parser *parser, Arena *arena, size_t token_count);
 
 /*
  * Parses the token stream into an AST.

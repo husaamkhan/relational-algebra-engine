@@ -2,6 +2,8 @@
 #include "unity.h"
 #include <string.h>
 
+// TODO: not the only place this is used, maybe things that are common between
+// multiple test files should be moved to a common_test.h file later
 static const char *CATEGORY_NAMES[] = {
     [LPAREN] = "LPAREN",
     [RPAREN] = "RPAREN",
@@ -71,7 +73,6 @@ static void run_test(const char *src, size_t input_length,
 }
 
 void setUp(void) { printf("\n=== %s ===\n", Unity.CurrentTestName); }
-
 void tearDown(void) {}
 
 void test_lparen(void) {

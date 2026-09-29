@@ -2,6 +2,11 @@
 
 #include "common.h"
 
+#define NAME_ERR(fmt, ...) LOG_ERR("[NAME] " fmt, ##__VA_ARGS__)
+#define DEFINITION_ERR(fmt, ...) LOG_ERR("[DEFINITION] " fmt, ##__VA_ARGS__)
+#define SCHEMA_ERR(fmt, ...) LOG_ERR("[SCHEMA] " fmt, ##__VA_ARGS__)
+#define TYPE_ERR(fmt, ...) LOG_ERR("[TYPE] " fmt, ##__VA_ARGS__)
+
 typedef enum
 {
 	VALUE_NUMBER,
@@ -28,6 +33,7 @@ typedef struct
 typedef struct
 {
 	const char *name;
+	size_t name_length;
 
 	const char **attributes;
 	size_t attribute_count;
@@ -44,15 +50,14 @@ typedef struct
 
 typedef struct
 {
-    Arena *arena;
+	Arena *arena;
 
-    Relation *relations;
-    size_t relation_count;
+	Relation *relations;
+	size_t relation_count;
 
-    ExecutorStats stats;
+	ExecutorStats stats;
 } Executor;
 
 void executor_init(Executor *executor, Arena *arena);
 void execute(Executor *executor, Tree *tree);
-void print_relations(const Executor *executor);
 

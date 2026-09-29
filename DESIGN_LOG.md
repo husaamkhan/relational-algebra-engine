@@ -95,3 +95,8 @@
 -   Improved arena usage
 -   Moved test cases specified in assignment guideline to separate test files, and added new build target to build+run those tests.
 -   Added compile flags and fixed tons of compile warnings
+-   Added interactive input from stdin
+-   Started working on executor. So far can process and print out relation definitions
+
+## September 29
+-   Implemented query for relation definition and rename

@@ -6,7 +6,7 @@ includes="-Iinclude"
 flags="-std=c17 -Wall -Wextra -Wshadow -Wconversion -Wsign-conversion -Wformat=2 -Wundef -Wstrict-prototypes -g -O0"
 defs="-DDEBUG"
 
-sources="source/lexer.c source/parser.c"
+sources="source/lexer.c source/parser.c source/executor.c"
 unity_src="test/Unity/src/unity.c"
 bin="bin/ra"
 

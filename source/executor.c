@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+static Relation *execute_query(Executor *executor,TreeNode *node);
 
 static double token_to_number(const Token *token)
 {
@@ -14,14 +15,21 @@ static double token_to_number(const Token *token)
      * string, so copy the numeric lexeme into a buffer and add the
      * terminating '\0' before passing it to strtod().
      */
-    memcpy(buffer, token->lexeme_start, token->lexeme_length);
+    memcpy(
+        buffer,
+        token->lexeme_start,
+        token->lexeme_length
+    );
+
     buffer[token->lexeme_length] = '\0';
 
     return strtod(buffer, NULL);
 }
 
 
-static char *token_to_string(Arena *arena, const Token *token)
+static char *token_to_string(
+        Arena *arena,
+        const Token *token)
 {
     size_t length = token->lexeme_length;
 
@@ -44,7 +52,9 @@ static char *token_to_string(Arena *arena, const Token *token)
     {
         size_t j = 0;
 
-        for (size_t i = 1; i < token->lexeme_length - 1; i++)
+        for (size_t i = 1;
+             i < token->lexeme_length - 1;
+             i++)
         {
             /*
              * Two consecutive single quotes inside a STRING token
@@ -66,7 +76,12 @@ static char *token_to_string(Arena *arena, const Token *token)
     }
     else
     {
-        memcpy(string, token->lexeme_start, length);
+        memcpy(
+            string,
+            token->lexeme_start,
+            length
+        );
+
         string[length] = '\0';
     }
 
@@ -74,7 +89,9 @@ static char *token_to_string(Arena *arena, const Token *token)
 }
 
 
-static Value token_to_value(Executor *executor, const Token *token)
+static Value token_to_value(
+        Executor *executor,
+        const Token *token)
 {
     Value value;
 
@@ -90,7 +107,10 @@ static Value token_to_value(Executor *executor, const Token *token)
          * relation-definition grammar.
          */
         value.type = VALUE_STRING;
-        value.string = token_to_string(executor->arena, token);
+        value.string = token_to_string(
+            executor->arena,
+            token
+        );
     }
 
     return value;
@@ -99,13 +119,23 @@ static Value token_to_value(Executor *executor, const Token *token)
 
 static Relation *find_relation(
         Executor *executor,
-        const char *name)
+        const char *name,
+        size_t name_length)
 {
-    for (size_t i = 0; i < executor->relation_count; i++)
+    for (size_t i = 0;
+         i < executor->relation_count;
+         i++)
     {
-        if (strcmp(executor->relations[i].name, name) == 0)
+        Relation *relation = &executor->relations[i];
+
+        if (relation->name_length == name_length &&
+            strncmp(
+                relation->name,
+                name,
+                name_length
+            ) == 0)
         {
-            return &executor->relations[i];
+            return relation;
         }
     }
 
@@ -124,28 +154,21 @@ static Relation *execute_relation_definition(
 
     Token *relation_token = relation_node->token_arr[0];
 
-    char *relation_name = arena_push(
-        executor->arena,
-        relation_token->lexeme_length + 1,
-        _Alignof(char)
-    );
-
-    memcpy(
-        relation_name,
+    Relation *existing = find_relation(
+        executor,
         relation_token->lexeme_start,
         relation_token->lexeme_length
     );
 
-    relation_name[relation_token->lexeme_length] = '\0';
-
-    Relation *existing = find_relation(
-        executor,
-        relation_name
-    );
-
     if (existing != NULL)
     {
-        return existing;
+        DEFINITION_ERR(
+            "Relation '%.*s' already exists",
+            (int)relation_token->lexeme_length,
+            relation_token->lexeme_start
+        );
+
+        return NULL;
     }
 
     Relation *relation = arena_push(
@@ -154,7 +177,9 @@ static Relation *execute_relation_definition(
         _Alignof(Relation)
     );
 
-    relation->name = relation_name;
+    relation->name = relation_token->lexeme_start;
+    relation->name_length = relation_token->lexeme_length;
+
     relation->attribute_count = attributes_node->token_count;
 
     relation->attributes = arena_push(
@@ -163,9 +188,12 @@ static Relation *execute_relation_definition(
         _Alignof(char *)
     );
 
-    for (size_t i = 0; i < relation->attribute_count; i++)
+    for (size_t i = 0;
+         i < relation->attribute_count;
+         i++)
     {
-        Token *attribute_token = attributes_node->token_arr[i];
+        Token *attribute_token =
+            attributes_node->token_arr[i];
 
         char *attribute_name = arena_push(
             executor->arena,
@@ -212,13 +240,15 @@ static Relation *execute_relation_definition(
          tuple_node != NULL;
          tuple_node = tuple_node->left_child)
     {
-        Tuple *tuple = &relation->tuples[tuple_index++];
+        Tuple *tuple =
+            &relation->tuples[tuple_index++];
 
         /*
          * token_arr[0] is the synthetic TUPLE token.
          * The actual tuple values begin at token_arr[1].
          */
-        tuple->value_count = tuple_node->token_count - 1;
+        tuple->value_count =
+            tuple_node->token_count - 1;
 
         tuple->values = arena_push(
             executor->arena,
@@ -226,9 +256,12 @@ static Relation *execute_relation_definition(
             _Alignof(Value)
         );
 
-        for (size_t i = 0; i < tuple->value_count; i++)
+        for (size_t i = 0;
+             i < tuple->value_count;
+             i++)
         {
-            Token *value_token = tuple_node->token_arr[i + 1];
+            Token *value_token =
+                tuple_node->token_arr[i + 1];
 
             tuple->values[i] = token_to_value(
                 executor,
@@ -238,11 +271,13 @@ static Relation *execute_relation_definition(
     }
 
     /*
-     * Add the newly created relation to the executor's relation list.
+     * Add the newly created relation to the executor's
+     * relation list.
      */
     Relation *relations = arena_push(
         executor->arena,
-        sizeof(Relation) * (executor->relation_count + 1),
+        sizeof(Relation) *
+            (executor->relation_count + 1),
         _Alignof(Relation)
     );
 
@@ -251,7 +286,8 @@ static Relation *execute_relation_definition(
         memcpy(
             relations,
             executor->relations,
-            sizeof(Relation) * executor->relation_count
+            sizeof(Relation) *
+                executor->relation_count
         );
     }
 
@@ -260,21 +296,160 @@ static Relation *execute_relation_definition(
     executor->relations = relations;
     executor->relation_count++;
 
-    return relation;
+    return &relations[executor->relation_count - 1];
 }
 
+static Relation *execute_rename(
+        Executor *executor,
+        TreeNode *node)
+{
+    TreeNode *name_node = node->left_child;
+    TreeNode *expression = node->right_child;
+
+    Relation *input =
+        execute_query(
+            executor,
+            expression
+        );
+
+    if (input == NULL)
+    {
+        return NULL;
+    }
+
+    Token *name_token =
+        name_node->token_arr[0];
+
+    /* TODO: Because the result of rename is temporary, it doesn't have
+     * the same lifespan as all the other relations. It should only last
+     * until the end of the operation it was required for. So maybe putting
+     * it in the arena is not the best idea but I'm not sure if going through
+     * the hassle of mallocing and then finding the right place to free it is
+     * necessary at this point in time since the program is pretty much done
+     * after execute() anyway
+     */
+    /*
+     * RENAME changes only the relation name.
+     * The attributes and tuples are shared with the input
+     * relation since they are immutable during query execution.
+     */
+    Relation *result = arena_push(
+        executor->arena,
+        sizeof(Relation),
+        _Alignof(Relation)
+    );
+
+    *result = *input;
+
+    result->name = name_token->lexeme_start;
+    result->name_length = name_token->lexeme_length;
+
+    return result;
+}
 
 static Relation *execute_query(
         Executor *executor,
         TreeNode *node)
 {
-    /*
-     * Query operators will be implemented here.
-     */
-    (void)executor;
-    (void)node;
+    if (node == NULL || node->token_count == 0)
+    {
+        return NULL;
+    }
 
-    return NULL;
+    Token *token = node->token_arr[0];
+
+    switch (token->category)
+    {
+        case IDENT:
+        {
+            Relation *relation = find_relation(
+                executor,
+                token->lexeme_start,
+                token->lexeme_length
+            );
+
+            if (relation == NULL)
+            {
+                NAME_ERR(
+                    "Relation '%.*s' does not exist",
+                    (int)token->lexeme_length,
+                    token->lexeme_start
+                );
+            }
+
+            return relation;
+        }
+
+        case RENAME:
+            return execute_rename(
+                executor,
+                node
+            );
+
+        default:
+            return NULL;
+    }
+}
+
+static void print_result(const Relation *relation)
+{
+    printf(
+        "Relation: %.*s\n",
+        (int)relation->name_length,
+        relation->name
+    );
+
+    printf("Attributes: ");
+
+    for (size_t i = 0;
+         i < relation->attribute_count;
+         i++)
+    {
+        if (i > 0)
+        {
+            printf(", ");
+        }
+
+        printf("%s", relation->attributes[i]);
+    }
+
+    printf("\n");
+
+    printf("Tuples:\n");
+
+    for (size_t i = 0;
+         i < relation->tuple_count;
+         i++)
+    {
+        const Tuple *tuple = &relation->tuples[i];
+
+        printf("  (");
+
+        for (size_t j = 0;
+             j < tuple->value_count;
+             j++)
+        {
+            if (j > 0)
+            {
+                printf(", ");
+            }
+
+            const Value *value = &tuple->values[j];
+
+            if (value->type == VALUE_NUMBER)
+            {
+                printf("%g", value->number);
+            }
+            else
+            {
+                printf("'%s'", value->string);
+            }
+        }
+
+        printf(")\n");
+    }
+
+    printf("\n");
 }
 
 
@@ -290,12 +465,40 @@ static void execute_statement(
     switch (root->token_arr[0]->category)
     {
         case EQUAL:
-            execute_relation_definition(executor, root);
+        {
+            Relation *relation =
+                execute_relation_definition(
+                    executor,
+                    root
+                );
+
+            if (relation != NULL)
+            {
+                printf(
+                    "Successfully created relation %.*s\n",
+                    (int)relation->name_length,
+                    relation->name
+                );
+            }
+
             break;
+        }
 
         default:
-            execute_query(executor, root);
+        {
+            Relation *result =
+                execute_query(
+                    executor,
+                    root
+                );
+
+            if (result != NULL)
+            {
+                print_result(result);
+            }
+
             break;
+        }
     }
 }
 
@@ -331,50 +534,3 @@ void execute(
     }
 }
 
-void print_relations(const Executor *executor)
-{
-    for (size_t i = 0; i < executor->relation_count; i++)
-    {
-        const Relation *relation = &executor->relations[i];
-
-        printf("Relation: %s\n", relation->name);
-
-        printf("Attributes: ");
-
-        for (size_t j = 0; j < relation->attribute_count; j++)
-        {
-            if (j > 0)
-                printf(", ");
-
-            printf("%s", relation->attributes[j]);
-        }
-
-        printf("\n");
-
-        printf("Tuples:\n");
-
-        for (size_t j = 0; j < relation->tuple_count; j++)
-        {
-            const Tuple *tuple = &relation->tuples[j];
-
-            printf("  (");
-
-            for (size_t k = 0; k < tuple->value_count; k++)
-            {
-                if (k > 0)
-                    printf(", ");
-
-                const Value *value = &tuple->values[k];
-
-                if (value->type == VALUE_NUMBER)
-                    printf("%g", value->number);
-                else
-                    printf("'%s'", value->string);
-            }
-
-            printf(")\n");
-        }
-
-        printf("\n");
-    }
-}
